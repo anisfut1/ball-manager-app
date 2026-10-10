@@ -7107,8 +7107,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7183,14 +7184,15 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
+                query?: {
                     status?: components["schemas"]["DerogationRequestStatus"];
                     teamId?: string;
                     matchId?: string;
                     createdByMe?: "true" | "false";
                     limit?: number;
                     offset?: number | null;
-                    token: string;
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7251,8 +7253,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7340,7 +7343,8 @@ export interface paths {
             parameters: {
                 query: {
                     date: string;
-                    token: string;
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                     matchId: string;
                 };
                 header?: never;
@@ -7419,7 +7423,8 @@ export interface paths {
                 query: {
                     startAt: string;
                     venueId?: string;
-                    token: string;
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                     matchId: string;
                 };
                 header?: never;
@@ -7495,8 +7500,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7559,8 +7565,9 @@ export interface paths {
         post?: never;
         delete: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7635,8 +7642,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7716,8 +7724,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7806,8 +7815,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -7885,8 +7895,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -8042,8 +8053,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9145,8 +9157,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9199,8 +9212,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9290,8 +9304,9 @@ export interface paths {
         post?: never;
         delete: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                     from?: string;
                 };
                 header?: never;
@@ -9346,8 +9361,9 @@ export interface paths {
         head?: never;
         patch: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9430,8 +9446,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9488,8 +9505,9 @@ export interface paths {
         head?: never;
         patch: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9574,8 +9592,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9646,8 +9665,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -9713,8 +9733,9 @@ export interface paths {
         get?: never;
         put: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -10261,8 +10282,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -10331,8 +10353,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -10417,8 +10440,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -10484,8 +10508,9 @@ export interface paths {
         get?: never;
         put: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -10575,8 +10600,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -10643,8 +10669,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -11421,8 +11448,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -11693,8 +11721,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -11762,8 +11791,9 @@ export interface paths {
         get?: never;
         put: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -11838,8 +11868,9 @@ export interface paths {
         post?: never;
         delete: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -11905,8 +11936,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -11975,8 +12007,9 @@ export interface paths {
         get?: never;
         put: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -12065,8 +12098,9 @@ export interface paths {
         get?: never;
         put: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
@@ -12329,8 +12363,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                     from?: string;
                     to?: string;
                 };
@@ -12418,8 +12453,9 @@ export interface paths {
         get?: never;
         put: {
             parameters: {
-                query: {
-                    token: string;
+                query?: {
+                    /** @description Lien personnel (web). Facultatif avec l'en-tête X-Personal-Link-Token ou une session d'appareil (Authorization: Bearer bmd_… + X-BM-As). */
+                    token?: string;
                 };
                 header?: never;
                 path: {
