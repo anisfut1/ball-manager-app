@@ -1,0 +1,23 @@
+/** Clés TanStack Query centralisées (invalidation ciblée après une mutation). */
+export const queryKeys = {
+  clubs: ["clubs"] as const,
+  club: (slug: string) => ["club", slug] as const,
+  session: (slug: string) => ["session", slug] as const,
+  actionCenter: (slug: string, people: readonly string[]) => ["action-center", slug, ...people] as const,
+  actionCenterAll: (slug: string) => ["action-center", slug] as const,
+  planning: (slug: string, from: string, to: string) => ["planning", slug, from, to] as const,
+  planningAll: (slug: string) => ["planning", slug] as const,
+  match: (slug: string, matchId: string) => ["match", slug, matchId] as const,
+  matchTeamLife: (slug: string, matchId: string) => ["match-team-life", slug, matchId] as const,
+  laundrySuggestions: (slug: string, matchId: string) => ["laundry-suggestions", slug, matchId] as const,
+  training: (slug: string, id: string) => ["training", slug, id] as const,
+  teamTrainings: (slug: string, teamId: string) => ["team-trainings", slug, teamId] as const,
+  trainingSeries: (slug: string, teamId: string) => ["training-series", slug, teamId] as const,
+  teams: (slug: string) => ["teams", slug] as const,
+  teamOverview: (slug: string, teamId: string) => ["team-overview", slug, teamId] as const,
+  tables: (slug: string) => ["tables", slug] as const,
+  tableSuggestions: (slug: string, matchId: string, role: string) => ["table-suggestions", slug, matchId, role] as const,
+  derogations: (slug: string) => ["derogations", slug] as const,
+  derogation: (slug: string, id: string) => ["derogation", slug, id] as const,
+  derogationContext: (slug: string) => ["derogation-context", slug] as const,
+} as const;
