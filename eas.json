@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": false },
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_API_URL": "https://club-manager-api-two.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": "https://www.ball-manager.fr"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "preview",
+        "EXPO_PUBLIC_API_URL": "https://club-manager-api-two.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": "https://www.ball-manager.fr"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://club-manager-api-two.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": "https://www.ball-manager.fr"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "YFZ72KY47V",
+        "bundleIdentifier": "fr.ballmanager.app"
+      }
+    }
+  }
+}

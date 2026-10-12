@@ -3,6 +3,7 @@ import { humanMessage } from "@/api/errors";
 import { AppText, Banner, CardSkeletons, EmptyState, ErrorState, Screen, SectionHeader } from "@/components/ui";
 import { ActionItem } from "@/features/home/ActionCards";
 import { ClubHeader } from "@/features/home/ClubHeader";
+import { PushInvite } from "@/features/home/PushInvite";
 import { UpcomingList } from "@/features/home/UpcomingList";
 import { actionKey, isPending, sortActions } from "@/features/home/action-center-model";
 import { useActionCenter, useAnswer } from "@/features/home/useActionCenter";
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   return (
     <Screen refreshing={query.isRefetching} onRefresh={() => void query.refetch()}>
       <ClubHeader title="Accueil" />
+      <PushInvite />
       {error ? <Banner tone="danger" message={error} /> : null}
       {query.isPending ? <CardSkeletons count={3} /> : null}
       {query.error && !query.data ? <ErrorState message={humanMessage(query.error)} onRetry={() => void query.refetch()} /> : null}
