@@ -21,7 +21,7 @@ const ASSOCIATED_DOMAINS = (process.env.BM_ASSOCIATED_DOMAINS ?? "www.ball-manag
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Ball Manager",
-  slug: "ball-manager",
+  slug: "ball-manager-app",
   owner: process.env.EXPO_OWNER,
   version: "1.0.0",
   orientation: "portrait",
@@ -62,7 +62,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
-    "expo-secure-store",
+    // Pas de biométrie : aucune permission Face ID déclarée.
+    ["expo-secure-store", { faceIDPermission: false }],
     ["expo-notifications", { mode: VARIANT === "development" ? "development" : "production" }],
     [
       "expo-splash-screen",
