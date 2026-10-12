@@ -35,6 +35,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: false,
     associatedDomains: ASSOCIATED_DOMAINS.map((d: string) => `applinks:${d}`),
     config: { usesNonExemptEncryption: false },
+    // Raisons des « required reason APIs » du socle React Native / Expo (docs/APP_STORE.md).
+    // À confirmer avec le courriel d'Apple après le premier envoi TestFlight.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyAccessedAPITypes: [
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults", NSPrivacyAccessedAPITypeReasons: ["CA92.1"] },
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp", NSPrivacyAccessedAPITypeReasons: ["C617.1", "0A2A.1", "3B52.1"] },
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime", NSPrivacyAccessedAPITypeReasons: ["35F9.1"] },
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace", NSPrivacyAccessedAPITypeReasons: ["E174.1", "85F4.1"] },
+      ],
+    },
     infoPlist: {
       CFBundleDevelopmentRegion: "fr",
       CFBundleAllowMixedLocalizations: true,
