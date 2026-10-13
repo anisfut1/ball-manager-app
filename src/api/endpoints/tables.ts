@@ -12,7 +12,8 @@ export const tablesApi = {
     call(clubSlug, () => api().GET("/v1/public/clubs/{clubSlug}/table-assignments", { params: { path: { clubSlug }, query: { from, to } }, headers: auth(clubSlug, as) })),
   suggestions: (clubSlug: string, as: string, matchId: string, role: TableRole) =>
     call(clubSlug, () => api().GET("/v1/public/clubs/{clubSlug}/matches/{matchId}/table-suggestions", { params: { path: { clubSlug, matchId }, query: { role } }, headers: auth(clubSlug, as) })),
-  assign: (clubSlug: string, as: string, matchId: string, role: TableRole, licencieId: string, ignoreMatchConflict = false) =>
+  /** Sans `licencieId` : se positionner soi-même (personne active). Avec : désigner quelqu'un (coach / responsable, vérifié par le serveur). */
+  assign: (clubSlug: string, as: string, matchId: string, role: TableRole, licencieId?: string, ignoreMatchConflict = false) =>
     call(clubSlug, () => api().PUT("/v1/public/clubs/{clubSlug}/matches/{matchId}/table-assignments/{role}", { params: { path: { clubSlug, matchId, role } }, headers: auth(clubSlug, as), body: { licencieId, ignoreMatchConflict } })),
   remove: (clubSlug: string, as: string, matchId: string, role: TableRole) =>
     call(clubSlug, () => api().DELETE("/v1/public/clubs/{clubSlug}/matches/{matchId}/table-assignments/{role}", { params: { path: { clubSlug, matchId, role } }, headers: auth(clubSlug, as) })),
