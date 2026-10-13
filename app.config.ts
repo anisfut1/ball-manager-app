@@ -22,7 +22,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Ball Manager",
   slug: "ball-manager-app",
-  owner: process.env.EXPO_OWNER,
+  // Projet EAS @rmessas-team/ball-manager-app (créé le 2026-10-13). Valeurs publiques, pas des secrets.
+  owner: "rmessas-team",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -80,6 +81,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     variant: VARIANT,
-    eas: process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : undefined,
+    eas: { projectId: "5b55c4d4-edf4-401e-80ff-9728352ccb6b" },
   },
 });

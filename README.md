@@ -35,7 +35,6 @@ Tout bundle mobile est public : **aucun secret** (service role Supabase, clé AP
 | `EXPO_PUBLIC_WEB_URL` | URL de `ball-manager-web` (défaut `https://www.ball-manager.fr`) |
 | `APP_VARIANT` | `development` / `preview` / `production` (fixé par les profils EAS) |
 | `BM_ASSOCIATED_DOMAINS` | domaines Universal Links (défaut `www.ball-manager.fr`) |
-| `EXPO_OWNER`, `EAS_PROJECT_ID` | compte et projet EAS |
 
 Copier ces valeurs dans un `.env.local` (ignoré par git) pour le développement.
 

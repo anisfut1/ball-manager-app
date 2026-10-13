@@ -6,7 +6,7 @@ Uniquement ce qui ne peut pas être fait depuis le code. Aucune soumission ni bu
 2. **AASA** : vérifier `https://www.ball-manager.fr/.well-known/apple-app-site-association` (200, `application/json`, sans redirection). Pour ajouter `ball-manager.fr`, vérifier pareil puis définir `BM_ASSOCIATED_DOMAINS`.
 3. **Resend** : désactiver le suivi des clics.
 4. **Clé APNs `.p8`** (Apple Developer → Keys) puis variables Vercel de `ball-manager-back` : `APNS_TEAM_ID=YFZ72KY47V`, `APNS_KEY_ID`, `APNS_PRIVATE_KEY`.
-5. **Compte Expo** : `npx eas-cli login`, `eas init` (renseigne `EAS_PROJECT_ID`, `EXPO_OWNER`), identifiants iOS (laisser EAS gérer la signature).
+5. **Compte Expo** : fait le 2026-10-13. Projet `@rmessas-team/ball-manager-app` (projectId `5b55c4d4-edf4-401e-80ff-9728352ccb6b`, écrit dans `app.config.ts`). Identifiants iOS : laisser EAS gérer la signature.
 6. **Development Build** : `npx eas-cli build --profile development --platform ios`, installer sur un vrai iPhone, dérouler `docs/IOS_TEST_MATRIX.md`.
 7. **Icône définitive** 1024 × 1024 sans transparence (remplace `assets/images/icon.png`).
 8. **Support/pages légales** : `NEXT_PUBLIC_SUPPORT_EMAIL` (web), relecture de `/confidentialite`.
