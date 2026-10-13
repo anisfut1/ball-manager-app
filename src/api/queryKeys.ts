@@ -20,4 +20,8 @@ export const queryKeys = {
   derogations: (slug: string) => ["derogations", slug] as const,
   derogation: (slug: string, id: string) => ["derogation", slug, id] as const,
   derogationContext: (slug: string) => ["derogation-context", slug] as const,
+  home: (slug: string, as: string) => ["home", slug, as] as const,
+  matches: (slug: string, period: string) => ["matches", slug, period] as const,
+  tableLeaderboard: (slug: string) => ["table-leaderboard", slug] as const,
+  standings: (slug: string) => ["standings", slug] as const,
 } as const;

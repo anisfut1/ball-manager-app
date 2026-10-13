@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import * as Application from "expo-application";
 import * as WebBrowser from "expo-web-browser";
 import { useActiveClub, useSession } from "@/auth/SessionProvider";
@@ -57,7 +57,8 @@ export default function ProfileScreen() {
     ]);
 
   return (
-    <Screen>
+    <Screen edges={[]}>
+      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Plus", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
       <ClubHeader title="Profil" />
 
       {person ? (

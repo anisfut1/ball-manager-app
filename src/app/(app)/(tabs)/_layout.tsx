@@ -10,7 +10,11 @@ const icon = (name: IconName, active: IconName) =>
     return <Ionicons name={focused ? active : name} color={color} size={size} />;
   };
 
-/** Quatre onglets : l'accueil est le centre du produit. */
+/**
+ * Barre du bas alignée sur celle du web (PublicNav) : Accueil, Équipe,
+ * Matchs, Tables ; « Plus » regroupe Résultats, Dérogations, planning et profil
+ * (au-delà de cinq onglets, iOS masquerait le reste).
+ */
 export default function TabsLayout() {
   const accent = useClubAccent();
   return (
@@ -23,9 +27,10 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Accueil", tabBarIcon: icon("home-outline", "home") }} />
-      <Tabs.Screen name="planning" options={{ title: "Planning", tabBarIcon: icon("calendar-outline", "calendar") }} />
-      <Tabs.Screen name="equipes" options={{ title: "Équipes", tabBarIcon: icon("people-outline", "people") }} />
-      <Tabs.Screen name="profil" options={{ title: "Profil", tabBarIcon: icon("person-circle-outline", "person-circle") }} />
+      <Tabs.Screen name="equipes" options={{ title: "Équipe", tabBarIcon: icon("people-outline", "people") }} />
+      <Tabs.Screen name="matchs" options={{ title: "Matchs", tabBarIcon: icon("calendar-outline", "calendar") }} />
+      <Tabs.Screen name="tables" options={{ title: "Tables", tabBarIcon: icon("clipboard-outline", "clipboard") }} />
+      <Tabs.Screen name="plus" options={{ title: "Plus", tabBarIcon: icon("ellipsis-horizontal-circle-outline", "ellipsis-horizontal-circle") }} />
     </Tabs>
   );
 }

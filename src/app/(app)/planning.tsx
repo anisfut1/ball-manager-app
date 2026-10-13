@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Pressable, SectionList, StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { teamLifeApi, type PlanningEvent } from "@/api/endpoints/teamLife";
@@ -41,7 +41,8 @@ export default function PlanningScreen() {
   const sections = useMemo(() => groupByDay(events, club.timezone, filter), [events, club.timezone, filter]);
 
   return (
-    <Screen scroll={false}>
+    <Screen edges={[]} scroll={false}>
+      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Accueil", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
       <SectionList
         sections={sections}
         keyExtractor={(e) => `${e.kind}:${e.id}`}

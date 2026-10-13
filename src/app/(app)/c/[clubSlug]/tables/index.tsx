@@ -8,12 +8,18 @@ import { TABLE_ROLES, tablesApi, type TableRole } from "@/api/endpoints/tables";
 import { useActiveClub } from "@/auth/SessionProvider";
 import { AppText, Badge, Banner, Button, Card, CardSkeletons, EmptyState, ErrorState, ListRow, Screen } from "@/components/ui";
 import { spacing } from "@/design";
+import { ClubHeader } from "@/features/home/ClubHeader";
 import { useRoles } from "@/features/roles/useRoles";
 import { TableSuggestionsSheet } from "@/features/tables/TableSuggestionsSheet";
 import { addDaysKey, dayKey, relativeDayTime } from "@/lib/dates";
 
-/** Tables de marque des matchs à domicile : postes, suggestions, conflits, affectation manuelle. */
+/** Route profonde (liens, notifications) : même écran que l'onglet « Tables ». */
 export default function TablesScreen() {
+  return <TablesView />;
+}
+
+/** Tables de marque des matchs à domicile : postes, suggestions, conflits, affectation manuelle. `tab` : onglet de la barre du bas. */
+export function TablesView({ tab = false }: { tab?: boolean }) {
   const club = useActiveClub();
   const { roles } = useRoles();
   const queryClient = useQueryClient();
@@ -26,7 +32,7 @@ export default function TablesScreen() {
 
   return (
     <Screen refreshing={list.isRefetching} onRefresh={() => void list.refetch()}>
-      <Stack.Screen options={{ headerShown: true, title: "Tables de marque", headerBackTitle: "Retour" }} />
+      {tab ? <ClubHeader title="Tables" /> : <Stack.Screen options={{ headerShown: true, title: "Tables de marque", headerBackTitle: "Retour" }} />}
       {!manager ? <Banner tone="info" message="Lecture seule : seuls les responsables des tables affectent les postes." /> : null}
       {remove.error ? <Banner tone="danger" message={humanMessage(remove.error)} /> : null}
       {list.isPending ? <CardSkeletons count={2} /> : null}
