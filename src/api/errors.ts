@@ -60,6 +60,8 @@ export function apiErrorFrom(status: number, body: unknown): ApiError {
 }
 
 export function networkError(cause: unknown): ApiError {
+  // Bundle sans URL d'API (ex. `.env` absent en développement) : ce n'est pas le réseau.
+  if (cause instanceof Error && cause.name === "MissingConfigError") return new ApiError("server", "Configuration de l'app incomplète : adresse du serveur manquante.", 0, "MISSING_CONFIG");
   const aborted = cause instanceof Error && (cause.name === "AbortError" || cause.name === "TimeoutError");
   return aborted ? new ApiError("timeout", FALLBACK.timeout, 0) : new ApiError("offline", FALLBACK.offline, 0);
 }

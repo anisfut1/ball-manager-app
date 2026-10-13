@@ -31,6 +31,10 @@ describe("erreurs API", () => {
     const timeout = new Error("t");
     timeout.name = "AbortError";
     expect(networkError(timeout).kind).toBe("timeout");
+    const missing = new Error("EXPO_PUBLIC_API_URL manquant");
+    missing.name = "MissingConfigError";
+    expect(networkError(missing).kind).toBe("server");
+    expect(networkError(missing).code).toBe("MISSING_CONFIG");
     expect(humanMessage(new Error("boom"))).toBe("Une erreur inattendue est survenue. Réessaie.");
     expect(new ApiError("offline", "m", 0)).toBeInstanceOf(Error);
   });

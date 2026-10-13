@@ -21,7 +21,15 @@ export const env = {
   webUrl: cleanUrl(process.env.EXPO_PUBLIC_WEB_URL) ?? DEFAULT_WEB_URL,
 } as const;
 
+/** Configuration du bundle incomplète : à distinguer d'une coupure réseau. */
+export class MissingConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MissingConfigError";
+  }
+}
+
 export function requireApiUrl(): string {
-  if (!env.apiUrl) throw new Error("EXPO_PUBLIC_API_URL manquant : URL de ball-manager-back.");
+  if (!env.apiUrl) throw new MissingConfigError("EXPO_PUBLIC_API_URL manquant : URL de ball-manager-back.");
   return env.apiUrl;
 }
