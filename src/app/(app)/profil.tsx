@@ -4,8 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import * as Application from "expo-application";
 import * as WebBrowser from "expo-web-browser";
+import { authApi } from "@/api/endpoints/auth";
+import { humanMessage } from "@/api/errors";
 import { useActiveClub, useSession } from "@/auth/SessionProvider";
-import { AppText, Avatar, Badge, Banner, Button, Card, ListRow, Screen, SectionHeader } from "@/components/ui";
+import { AppText, Avatar, Badge, Banner, Button, Card, ListRow, Screen, SectionHeader, type BannerTone } from "@/components/ui";
 import { colors } from "@/design";
 import { env } from "@/config/env";
 import { ClubHeader } from "@/features/home/ClubHeader";
@@ -49,6 +51,31 @@ export default function ProfileScreen() {
       setPushBusy(false);
     }
   }, [state.clubs]);
+
+  const [test, setTest] = useState<{ busy: boolean; tone: BannerTone; message: string } | null>(null);
+  /** Test : une notification vers cet iPhone seulement ; dit aussi si le serveur est prêt. */
+  const sendTest = useCallback(async () => {
+    const session = state.clubs[club.clubSlug];
+    if (!session) return;
+    setTest({ busy: true, tone: "info", message: "Envoi en cours…" });
+    try {
+      let result = await authApi.pushTest(club.clubSlug, session.secret);
+      if (result.status === "no_token") {
+        // Jeton pas encore enregistré pour ce club : on le (ré)enregistre puis on réessaie une fois.
+        await enablePush(Object.values(state.clubs));
+        result = await authApi.pushTest(club.clubSlug, session.secret);
+      }
+      const messages: Record<typeof result.status, { tone: BannerTone; message: string }> = {
+        sent: { tone: "success", message: "Notification envoyée : elle doit arriver sur cet iPhone dans quelques secondes." },
+        not_configured: { tone: "warning", message: "Le serveur n'a pas encore la clé de notifications Apple : rien ne peut partir pour l'instant." },
+        no_token: { tone: "warning", message: "Cet iPhone n'est pas encore enregistré pour les notifications. Réessaie dans un instant." },
+        failed: { tone: "danger", message: `Apple a refusé l'envoi${result.reason ? ` (${result.reason})` : ""}.` },
+      };
+      setTest({ busy: false, ...messages[result.status] });
+    } catch (error) {
+      setTest({ busy: false, tone: "danger", message: humanMessage(error) });
+    }
+  }, [club.clubSlug, state.clubs]);
 
   const confirmLogout = () =>
     Alert.alert("Se déconnecter de ce club ?", `Tu ne recevras plus les notifications de ${club.clubName} sur cet appareil.`, [
@@ -117,7 +144,11 @@ export default function ProfileScreen() {
       <SectionHeader title="Notifications" />
       <Card>
         {permission === "granted" ? (
-          <Banner tone="success" message="Notifications activées : convocations et changements de match." />
+          <>
+            <Banner tone="success" message="Notifications activées : convocations et changements de match." />
+            <Button label="Envoyer une notification de test" variant="secondary" loading={test?.busy ?? false} onPress={() => void sendTest()} fullWidth />
+            {test && !test.busy ? <Banner tone={test.tone} message={test.message} /> : null}
+          </>
         ) : permission === "denied" ? (
           <>
             <Banner tone="warning" message="Les notifications sont désactivées pour Ball Manager dans les réglages de l'iPhone." />

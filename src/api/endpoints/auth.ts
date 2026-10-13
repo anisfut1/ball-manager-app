@@ -42,6 +42,10 @@ export const authApi = {
   registerPushToken: (clubSlug: string, secret: string, body: { token: string; environment: "development" | "production"; appVersion?: string }) =>
     call(clubSlug, () => api().PUT("/v1/public/clubs/{clubSlug}/auth/session/push-token", { params: { path: { clubSlug } }, headers: bearer(secret), body })),
 
+  /** Notification de test vers CET iPhone seulement (jamais l'équipe). */
+  pushTest: (clubSlug: string, secret: string) =>
+    call(clubSlug, () => api().POST("/v1/public/clubs/{clubSlug}/auth/session/push-test", { params: { path: { clubSlug } }, headers: bearer(secret) })),
+
   removePushToken: (clubSlug: string, secret: string) =>
     call(clubSlug, () => api().DELETE("/v1/public/clubs/{clubSlug}/auth/session/push-token", { params: { path: { clubSlug } }, headers: bearer(secret) })),
 };

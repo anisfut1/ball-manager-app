@@ -11226,6 +11226,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/clubs/{clubSlug}/auth/session/push-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Slug du club (flux public sans compte) */
+                    clubSlug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification de test vers cet iPhone seulement (sent / not_configured / no_token / failed) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PushTestResultDto"];
+                    };
+                };
+                /** @description Non authentifié */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Accès refusé */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Introuvable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/clubs/{clubSlug}/auth/codes": {
         parameters: {
             query?: never;
@@ -14122,6 +14187,11 @@ export interface components {
             /** @enum {string} */
             environment: "development" | "production";
             appVersion?: string;
+        };
+        PushTestResultDto: {
+            /** @enum {string} */
+            status: "sent" | "not_configured" | "no_token" | "failed";
+            reason: string | null;
         };
         AuthCodeDto: {
             code: string;
