@@ -14,6 +14,7 @@ import { useClubAccent } from "@/design/ClubTheme";
 import { ActionItem } from "@/features/home/ActionCards";
 import { actionKey } from "@/features/home/action-center-model";
 import { useActionCenter, useAnswer } from "@/features/home/useActionCenter";
+import { MatchOfficialBlock, MatchRequestBlock } from "@/features/derogations/MatchBlocks";
 import { CoachMatchPanel } from "@/features/match/CoachMatchPanel";
 import { useCoachMatch } from "@/features/match/useCoachMatch";
 import { clubSideLabel } from "@/features/matches/match-model";
@@ -103,6 +104,8 @@ export default function MatchScreen() {
       {tab === "informations" ? (coachFirst ? coachPanel : family) : null}
       {tab === "informations" ? (coachFirst ? family : coachPanel) : null}
       {tab === "informations" && coach.error ? <Banner tone="warning" message={humanMessage(coach.error)} /> : null}
+      {tab === "informations" ? <MatchRequestBlock matchId={matchId} /> : null}
+      {tab === "informations" ? <MatchOfficialBlock matchId={matchId} /> : null}
     </Screen>
   );
 }

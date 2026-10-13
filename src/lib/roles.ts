@@ -17,8 +17,10 @@ export interface MergedRoles {
   canManageDerogations: boolean;
   /** Personne à utiliser (X-BM-As) pour agir en coach sur une équipe. */
   coachFor(teamId: string): string | null;
-  /** Personne qui a le droit « tables » ou « dérogations ». */
-  actorFor(capability: "tables" | "derogations" | "derogations-create"): string | null;
+  /** Dérogations officielles FBI : admin du club OU coordinateur (comme le web). */
+  canManageOfficialDerogations: boolean;
+  /** Personne qui a le droit « tables », « dérogations » ou « dérogations officielles ». */
+  actorFor(capability: "tables" | "derogations" | "derogations-create" | "official"): string | null;
 }
 
 export function mergeRoles(people: ActionCenterDto["people"], me: Record<string, PublicMeDto | undefined>): MergedRoles {
@@ -39,8 +41,15 @@ export function mergeRoles(people: ActionCenterDto["people"], me: Record<string,
     canManageTables: find((m) => m.tables.canManage) !== null,
     canCreateDerogations: find((m) => m.derogationRequests.canCreate) !== null,
     canManageDerogations: find((m) => m.derogationRequests.canManage) !== null,
+    canManageOfficialDerogations: find((m) => m.isClubAdmin || m.derogationRequests.canManage) !== null,
     coachFor: (teamId) => coachTeams.get(teamId)?.coachLicencieId ?? adminId,
     actorFor: (capability) =>
-      capability === "tables" ? find((m) => m.tables.canManage) : capability === "derogations" ? (find((m) => m.derogationRequests.canManage) ?? find((m) => m.derogationRequests.canCreate)) : find((m) => m.derogationRequests.canCreate),
+      capability === "tables"
+        ? find((m) => m.tables.canManage)
+        : capability === "official"
+          ? (find((m) => m.derogationRequests.canManage) ?? adminId)
+          : capability === "derogations"
+            ? (find((m) => m.derogationRequests.canManage) ?? find((m) => m.derogationRequests.canCreate) ?? adminId)
+            : find((m) => m.derogationRequests.canCreate),
   };
 }

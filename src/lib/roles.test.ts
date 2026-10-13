@@ -36,4 +36,15 @@ describe("rôles fusionnés (jamais de « choisis ton mode »)", () => {
     const roles = mergeRoles([person("admin", null)], { admin: me({ isClubAdmin: true }) });
     expect(roles.coachFor("n-importe")).toBe("admin");
   });
+  it("dérogations officielles FBI : coordinateur OU admin du club (comme le web)", () => {
+    const coordo = mergeRoles([person("c", "t1")], { c: me({ derogationRequests: { canCreate: false, canManage: true } }) });
+    expect(coordo.canManageOfficialDerogations).toBe(true);
+    expect(coordo.actorFor("official")).toBe("c");
+    const admin = mergeRoles([person("a", null)], { a: me({ isClubAdmin: true }) });
+    expect(admin.canManageOfficialDerogations).toBe(true);
+    expect(admin.actorFor("official")).toBe("a");
+    const coach = mergeRoles([person("k", null, ["u13m"])], { k: me({ derogationRequests: { canCreate: true, canManage: false } }) });
+    expect(coach.canManageOfficialDerogations).toBe(false);
+    expect(coach.actorFor("official")).toBeNull();
+  });
 });
