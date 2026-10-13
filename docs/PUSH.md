@@ -18,4 +18,10 @@ APNs **direct** depuis `ball-manager-back` (voir `docs/IOS_PUSH.md` du web / `sr
 
 ## État de validation
 
-IMPLEMENTED + UNIT TESTED (chemin de notification, environnement APNs, clé d'enregistrement). **NOT TESTED ON DEVICE**, aucun envoi APNs réel, aucun TestFlight.
+IMPLEMENTED + UNIT TESTED (chemin de notification, environnement APNs, clé d'enregistrement).
+
+**Vérifié sur iPhone le 2026-10-13** : clé APNs (.p8 « Ball Manager Push », Sandbox & Production, Team Scoped) dans Vercel (`APNS_TEAM_ID`, `APNS_KEY_ID`, `APNS_PRIVATE_KEY`, projet club-manager-api, Production) ; build EAS interne (jeton `production`) ; « Envoyer une notification de test » (Profil → Notifications, `POST …/auth/session/push-test`, cet iPhone seulement) → reçue.
+
+Pas encore observé : une notification déclenchée par un vrai événement (convocation, changement de match…) reçue par une famille, ni un build TestFlight.
+
+Diagnostic du bouton de test : `not_configured` = variables APNs absentes du back ; `InvalidProviderToken` = Key ID et clé privée ne correspondent pas (ou Team ID faux) ; `BadDeviceToken` = jeton d'un autre environnement.
