@@ -44,5 +44,8 @@ export const clubSpaceApi = {
     }
     return out;
   },
+  matchDocuments: (clubSlug: string, matchId: string) =>
+    call(null, () => api().GET("/v1/public/clubs/{clubSlug}/matches/{matchId}/documents", { params: { path: { clubSlug, matchId } } })).then((r) => r.documents),
+  player: (clubSlug: string, licencieId: string) => call(null, () => api().GET("/v1/public/clubs/{clubSlug}/players/{licencieId}", { params: { path: { clubSlug, licencieId } } })),
   standings: (clubSlug: string) => call(null, () => api().GET("/v1/public/clubs/{clubSlug}/standings", { params: path(clubSlug) })).then((r) => r.standings),
 };

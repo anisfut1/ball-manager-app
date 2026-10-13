@@ -1,32 +1,48 @@
-import { StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { clubSpaceApi } from "@/api/endpoints/clubSpace";
 import { teamLifeApi } from "@/api/endpoints/teamLife";
 import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { useActiveClub } from "@/auth/SessionProvider";
-import { AppText, Badge, Banner, Card, CardSkeletons, ErrorState, Screen, SectionHeader } from "@/components/ui";
-import { colors, spacing } from "@/design";
+import { AppText, Banner, CardSkeletons, ErrorState, Screen, SectionHeader } from "@/components/ui";
+import { colors, radius, spacing } from "@/design";
+import { useClubAccent } from "@/design/ClubTheme";
 import { ActionItem } from "@/features/home/ActionCards";
 import { actionKey } from "@/features/home/action-center-model";
 import { useActionCenter, useAnswer } from "@/features/home/useActionCenter";
 import { CoachMatchPanel } from "@/features/match/CoachMatchPanel";
 import { useCoachMatch } from "@/features/match/useCoachMatch";
-import { matchTitle } from "@/features/team-life/labels";
-import { formatLongDay, formatTime } from "@/lib/dates";
+import { clubSideLabel } from "@/features/matches/match-model";
+import { useClubInfo } from "@/features/matches/useClubInfo";
+import { MATCH_TABS, parseMatchTab, type MatchTab } from "@/features/matches/detail/labels";
+import { CompositionPanel, EmarquePanel, InformationsPanel, OfficialsPanel, StatsPanel } from "@/features/matches/detail/Panels";
+import { Scoreboard, type ScoreboardTeam } from "@/features/matches/detail/Scoreboard";
 
-const STATUS: Record<string, { label: string; tone: "success" | "warning" | "danger" | "neutral" }> = {
-  played: { label: "Joué", tone: "neutral" },
-  postponed: { label: "Reporté", tone: "warning" },
-  cancelled: { label: "Annulé", tone: "danger" },
-  forfeit: { label: "Forfait", tone: "danger" },
+const TAB_ICONS: Record<MatchTab, keyof typeof Ionicons.glyphMap> = {
+  informations: "information-circle-outline",
+  composition: "people-outline",
+  statistiques: "stats-chart-outline",
+  officiels: "scale-outline",
+  emarque: "document-text-outline",
 };
 
-/** Match : infos (FFBB), ce qui concerne MA famille (dispo / convocation / maillots), et la vue coach si autorisée. */
+/**
+ * Fiche match, comme le web (MatchDetailView) : tableau de marque et cinq
+ * onglets (Informations, Composition, Statistiques, Officiels, e-Marque).
+ * Sur « Informations » : ce qui concerne MA famille (dispo / convocation /
+ * maillots) et la vue coach si autorisée.
+ */
 export default function MatchScreen() {
-  const { matchId = "", section } = useLocalSearchParams<{ matchId: string; section?: string }>();
+  const { matchId = "", section, tab: tabParam } = useLocalSearchParams<{ matchId: string; section?: string; tab?: string }>();
   const club = useActiveClub();
+  const info = useClubInfo();
+  const accent = useClubAccent();
+  const [tab, setTab] = useState<MatchTab>(parseMatchTab(tabParam));
+  const documents = useQuery({ queryKey: queryKeys.matchDocuments(club.clubSlug, matchId), queryFn: () => clubSpaceApi.matchDocuments(club.clubSlug, matchId), enabled: tab === "emarque" });
   const details = useQuery({ queryKey: queryKeys.match(club.clubSlug, matchId), queryFn: () => teamLifeApi.matchDetails(club.clubSlug, matchId) });
   const coach = useCoachMatch(matchId);
   const { query: center } = useActionCenter();
@@ -34,6 +50,9 @@ export default function MatchScreen() {
   const mine = (center.data?.actions ?? []).filter((a) => a.type !== "COACH_MATCH" && a.type !== "COACH_TRAINING_SUMMARY" && "match" in a && a.match.id === matchId);
   const m = details.data;
   const coachFirst = section === "coach" || section === "maillots";
+  const ours: ScoreboardTeam | null = m ? { name: clubSideLabel(m, info.name), logoName: info.name, logoUrl: info.logoUrl, isClub: true, accentColor: info.accentColor } : null;
+  const theirs: ScoreboardTeam | null = m ? { name: m.opponentName ?? "?", logoName: m.opponentName ?? "?", logoUrl: m.opponentLogoUrl, isClub: false } : null;
+  const [home, away] = m && m.isHome === false ? [theirs, ours] : [ours, theirs];
 
   const family = mine.length ? (
     <View style={styles.block}>
@@ -58,43 +77,40 @@ export default function MatchScreen() {
       <Stack.Screen options={{ headerShown: true, title: "Match", headerBackTitle: "Retour" }} />
       {details.isPending ? <CardSkeletons count={2} /> : null}
       {details.error ? <ErrorState message={humanMessage(details.error)} onRetry={() => void details.refetch()} /> : null}
-      {m ? (
-        <Card>
-          <AppText variant="eyebrow" tone="subtle">
-            {[m.competitionName, m.journee ? `J${m.journee}` : null].filter(Boolean).join(" · ") || "Match"}
-          </AppText>
-          <AppText variant="title">{matchTitle(m.teamName ?? "", m.opponentName, m.isHome)}</AppText>
-          <View style={styles.row}>
-            {m.isHome !== null ? <Badge label={m.isHome ? "Domicile" : "Extérieur"} /> : null}
-            {STATUS[m.status] ? <Badge tone={STATUS[m.status]!.tone} label={STATUS[m.status]!.label} /> : null}
-          </View>
-          {m.matchDatetime ? (
-            <View style={styles.line}>
-              <Ionicons name="calendar-outline" size={18} color={colors.muted} />
-              <AppText variant="body">{`${formatLongDay(m.matchDatetime, club.timezone)} · ${formatTime(m.matchDatetime, club.timezone)}`}</AppText>
-            </View>
-          ) : null}
-          {m.venueLabel ? (
-            <View style={styles.line}>
-              <Ionicons name="location-outline" size={18} color={colors.muted} />
-              <AppText variant="body" style={styles.flex}>
-                {m.venueLabel}
-              </AppText>
-            </View>
-          ) : null}
-          {m.scoreHome !== null && m.scoreAway !== null ? <AppText variant="numeric">{`${m.scoreHome} – ${m.scoreAway}`}</AppText> : null}
-        </Card>
+      {m && home && away ? (
+        <>
+          <Scoreboard match={m} home={home} away={away} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabs}>
+            {MATCH_TABS.map((t) => {
+              const active = t.value === tab;
+              return (
+                <Pressable key={t.value} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setTab(t.value)} style={[styles.tab, active && { backgroundColor: accent.soft, borderColor: accent.accent }]}>
+                  <Ionicons name={TAB_ICONS[t.value]} size={16} color={active ? accent.text : colors.muted} />
+                  <AppText variant="callout" color={active ? accent.text : colors.muted} style={styles.tabText}>
+                    {t.label}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {tab === "informations" ? <InformationsPanel match={m} home={home} away={away} /> : null}
+          {tab === "composition" ? <CompositionPanel match={m} home={home} away={away} /> : null}
+          {tab === "statistiques" ? <StatsPanel match={m} home={home} away={away} playerBase={`/c/${club.clubSlug}/joueurs`} /> : null}
+          {tab === "officiels" ? <OfficialsPanel match={m} /> : null}
+          {tab === "emarque" ? documents.isPending ? <CardSkeletons count={1} /> : <EmarquePanel match={m} documents={documents.data ?? []} /> : null}
+        </>
       ) : null}
-      {coachFirst ? coachPanel : family}
-      {coachFirst ? family : coachPanel}
-      {coach.error ? <Banner tone="warning" message={humanMessage(coach.error)} /> : null}
+      {tab === "informations" ? (coachFirst ? coachPanel : family) : null}
+      {tab === "informations" ? (coachFirst ? family : coachPanel) : null}
+      {tab === "informations" && coach.error ? <Banner tone="warning" message={humanMessage(coach.error)} /> : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   block: { gap: spacing.md },
-  row: { flexDirection: "row", gap: spacing.sm },
-  line: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  flex: { flex: 1 },
+  tabBar: { marginHorizontal: -spacing.gutter },
+  tabs: { gap: spacing.sm, paddingHorizontal: spacing.gutter },
+  tab: { flexDirection: "row", alignItems: "center", gap: spacing.xs, height: 40, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceRaised },
+  tabText: { fontWeight: "600" },
 });
