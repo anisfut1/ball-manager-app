@@ -32,7 +32,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     bundleIdentifier: "fr.ballmanager.app",
     appleTeamId: "YFZ72KY47V",
-    buildNumber: "1",
     supportsTablet: false,
     associatedDomains: ASSOCIATED_DOMAINS.map((d: string) => `applinks:${d}`),
     config: { usesNonExemptEncryption: false },
