@@ -1,18 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/api/queryKeys";
 import { useActiveClub } from "@/auth/SessionProvider";
-import { Screen } from "@/components/ui";
+import { AppText, Screen } from "@/components/ui";
 import { ClubHeader } from "@/features/home/ClubHeader";
-import { MatchesList } from "@/features/matches/MatchesList";
+import { MatchesView } from "@/features/matches/MatchesView";
 
-/** Onglet « Matchs » : prochains matchs du club (comme la page Matchs du web). */
+/** Onglet « Matchs » : la page Matchs du web (filtres, journées, salles). */
 export default function MatchesTab() {
   const club = useActiveClub();
   const queryClient = useQueryClient();
   return (
-    <Screen onRefresh={() => void queryClient.invalidateQueries({ queryKey: queryKeys.matches(club.clubSlug, "upcoming") })}>
-      <ClubHeader title="Matchs" />
-      <MatchesList period="upcoming" />
+    <Screen onRefresh={() => void queryClient.invalidateQueries({ queryKey: queryKeys.season(club.clubSlug) })}>
+      <ClubHeader title="Matchs de la saison" />
+      <AppText variant="callout" tone="muted">
+        Horaires, salles et résultats, mis à jour automatiquement.
+      </AppText>
+      <MatchesView />
     </Screen>
   );
 }
