@@ -54,7 +54,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: "fr.ballmanager.app",
     adaptiveIcon: {
-      backgroundColor: "#F7F6F2",
+      backgroundColor: "#111111",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
@@ -68,9 +68,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#F7F6F2",
+        // Logo BM sur tuile noire, posé sur le même noir : aucun bord visible.
+        backgroundColor: "#111111",
         image: "./assets/images/splash-icon.png",
-        imageWidth: 88,
+        imageWidth: 160,
       },
     ],
   ],
