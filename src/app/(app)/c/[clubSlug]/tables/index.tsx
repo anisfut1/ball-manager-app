@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, humanMessage } from "@/api/errors";
@@ -56,6 +56,7 @@ export function TablesView({ tab = false }: { tab?: boolean }) {
         {manager ? "en tant que coach / responsable, tu peux désigner, remplacer ou retirer n'importe qui (toi compris) sur les matchs à domicile." : "positionne-toi sur un poste libre des matchs à domicile."}
       </AppText>
 
+      <Button label="Classement des tables" variant="secondary" icon={<Ionicons name="trophy-outline" size={18} color={colors.foreground} />} onPress={() => router.push(`/c/${club.clubSlug}/tables/classement`)} fullWidth />
       <View style={styles.nav}>
         <NavButton icon="chevron-back" label="Journée précédente" onPress={() => setSaturday((s) => addDays(s, -7))} />
         <AppText variant="headline" style={styles.navLabel} accessibilityLiveRegion="polite">
