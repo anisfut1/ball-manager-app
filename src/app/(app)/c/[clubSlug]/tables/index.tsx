@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Switch, View } from "react-native";
 import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -102,6 +102,11 @@ function TableMatchCard({ match, meId, canManage, onChanged, onDesignate }: { ma
     onSuccess: (_, v) => onChanged(v.asManager ? "Poste libéré." : "Tu as été retiré·e de ce poste."),
     onError: (e, v) => setError({ role: v.role, message: humanMessage(e), canForce: false }),
   });
+  const referee = useMutation({
+    mutationFn: (noRefereeNeeded: boolean) => tablesApi.setRefereeStatus(club.clubSlug, manager!, match.match.id, noRefereeNeeded),
+    onSuccess: (_, v) => onChanged(v ? "Marqué « pas besoin d'arbitre »." : "Un arbitre du club est de nouveau nécessaire."),
+    onError: (e) => setError({ role: "REFEREE", message: humanMessage(e), canForce: false }),
+  });
   const confirmRemove = (role: TableRole, label: string, mine: boolean, who: string) =>
     Alert.alert(mine ? "Te retirer de ce poste ?" : `Retirer ${who} ?`, `${label}`, [
       { text: "Annuler", style: "cancel" },
@@ -129,6 +134,7 @@ function TableMatchCard({ match, meId, canManage, onChanged, onDesignate }: { ma
             </AppText>
           </View>
         </View>
+        {canManage && match.hasConflict ? <Badge tone="danger" label="Conflit" /> : <Badge tone="info" label="Domicile" />}
       </View>
       {TABLE_ROLES.map(({ role, key, label }) => {
         const slot = match.assignments[key];
@@ -143,8 +149,16 @@ function TableMatchCard({ match, meId, canManage, onChanged, onDesignate }: { ma
                 {label}
               </AppText>
               {slot?.hasConflict ? <Badge tone="danger" label="Conflit détecté" /> : null}
+              {role === "REFEREE" && canManage ? (
+                <View style={styles.toggle}>
+                  <AppText variant="meta" tone="muted">
+                    Pas besoin d&apos;arbitre
+                  </AppText>
+                  <Switch value={match.refereeNotNeeded} disabled={referee.isPending} onValueChange={(v) => referee.mutate(v)} accessibilityLabel="Pas besoin d'arbitre" />
+                </View>
+              ) : null}
             </View>
-            {refereeSkipped && !slot ? (
+            {refereeSkipped && (!slot || canManage) ? (
               <View style={styles.metaRow}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={colors.success} />
                 <AppText variant="meta" tone="muted" style={styles.flex}>
@@ -163,9 +177,14 @@ function TableMatchCard({ match, meId, canManage, onChanged, onDesignate }: { ma
                     <AppText variant="meta" tone="danger">
                       {slot.conflictReason}
                     </AppText>
+                  ) : canManage && slot.teams.length ? (
+                    <AppText variant="meta" tone="muted" numberOfLines={1}>
+                      {slot.teams.map((t) => t.name).join(", ")}
+                    </AppText>
                   ) : null}
                 </View>
-                {isMe || canManage ? <Button label={isMe ? "Se retirer" : "Retirer"} variant="secondary" loading={busy} onPress={() => confirmRemove(role, label, isMe, who)} /> : null}
+                {canManage ? <Button label={slot.hasConflict ? "Choisir un remplaçant" : "Modifier"} variant="secondary" onPress={() => onDesignate(role, label)} /> : null}
+                {isMe || canManage ? <Button label={isMe ? "Se retirer" : "Retirer"} variant={canManage ? "ghost" : "secondary"} loading={busy} onPress={() => confirmRemove(role, label, isMe, who)} /> : null}
               </View>
             ) : (
               <View style={styles.postBody}>
@@ -212,5 +231,6 @@ const styles = StyleSheet.create({
   postConflict: { borderColor: colors.danger, backgroundColor: colors.dangerSoft },
   postHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   postBody: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  toggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   force: { gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.warningSoft },
 });

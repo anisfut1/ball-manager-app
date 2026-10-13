@@ -15,6 +15,9 @@ export const tablesApi = {
   /** Sans `licencieId` : se positionner soi-même (personne active). Avec : désigner quelqu'un (coach / responsable, vérifié par le serveur). */
   assign: (clubSlug: string, as: string, matchId: string, role: TableRole, licencieId?: string, ignoreMatchConflict = false) =>
     call(clubSlug, () => api().PUT("/v1/public/clubs/{clubSlug}/matches/{matchId}/table-assignments/{role}", { params: { path: { clubSlug, matchId, role } }, headers: auth(clubSlug, as), body: { licencieId, ignoreMatchConflict } })),
+  /** Coach / responsable : « pas besoin d'arbitre » (arbitre officiel FFBB déjà désigné). N'affecte personne. */
+  setRefereeStatus: (clubSlug: string, as: string, matchId: string, noRefereeNeeded: boolean) =>
+    call(clubSlug, () => api().PUT("/v1/public/clubs/{clubSlug}/matches/{matchId}/referee-status", { params: { path: { clubSlug, matchId } }, headers: auth(clubSlug, as), body: { noRefereeNeeded } })),
   remove: (clubSlug: string, as: string, matchId: string, role: TableRole) =>
     call(clubSlug, () => api().DELETE("/v1/public/clubs/{clubSlug}/matches/{matchId}/table-assignments/{role}", { params: { path: { clubSlug, matchId, role } }, headers: auth(clubSlug, as) })),
 };

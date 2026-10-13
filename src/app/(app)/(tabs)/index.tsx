@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,11 +8,12 @@ import { TABLE_ROLES } from "@/api/endpoints/tables";
 import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { useSession } from "@/auth/SessionProvider";
-import { AppText, Badge, Banner, Button, Card, CardSkeletons, EmptyState, ErrorState, Screen, SectionHeader } from "@/components/ui";
+import { AppText, Badge, Banner, Button, Card, CardSkeletons, EmptyState, ErrorState, Screen, SectionHeader, Sheet } from "@/components/ui";
 import { colors, radius, shadows, spacing } from "@/design";
 import { useClubAccent } from "@/design/ClubTheme";
 import { ActionItem } from "@/features/home/ActionCards";
 import { ClubHeader } from "@/features/home/ClubHeader";
+import { IdentifyFlow } from "@/features/identify/IdentifyFlow";
 import { PushInvite } from "@/features/home/PushInvite";
 import { actionKey, isPending, sortActions } from "@/features/home/action-center-model";
 import { buildAgenda, type AgendaItem } from "@/features/home/agenda";
@@ -37,6 +38,7 @@ export default function HomeScreen() {
   const as = person?.licencieId ?? "";
   const { query: center } = useActionCenter();
   const { answer, pending, error: answerError, clearError } = useAnswer();
+  const [addingPerson, setAddingPerson] = useState(false);
   const home = useQuery({ queryKey: queryKeys.home(club.slug, as), queryFn: () => clubSpaceApi.home(club.slug, as), enabled: !!as });
   // Tables tenues cette saison (classement public) : bloc secondaire, une panne n'empêche pas l'accueil.
   const board = useQuery({ queryKey: queryKeys.tableLeaderboard(club.slug), queryFn: () => clubSpaceApi.tableLeaderboard(club.slug), staleTime: 10 * 60_000 });
@@ -91,6 +93,9 @@ export default function HomeScreen() {
                 fullWidth
               />
             ))}
+            {data.roles.coach || data.roles.admin ? (
+              <Button label="Entraînements" variant="secondary" icon={<Ionicons name="barbell-outline" size={18} color={colors.foreground} />} onPress={() => router.push(`${base}/entrainements`)} fullWidth />
+            ) : null}
             {data.roles.coach ? (
               <Button label="Demander une dérogation" variant="secondary" icon={<Ionicons name="calendar-outline" size={18} color={colors.foreground} />} onPress={() => router.push(`${base}/derogations/nouvelle`)} fullWidth />
             ) : null}
@@ -105,6 +110,7 @@ export default function HomeScreen() {
       {center.data ? (
         <>
           <SectionHeader title={todo > 0 ? `À faire · ${todo}` : "À faire"} />
+          {center.data.canAddRelative ? <Button label="Ajouter un enfant" variant="ghost" icon={<Ionicons name="person-add-outline" size={18} color={colors.foreground} />} onPress={() => setAddingPerson(true)} style={styles.start} /> : null}
           {actions.length === 0 ? <EmptyState title="Rien à faire pour l'instant" message="Les réponses attendues (entraînements, matchs, convocations) apparaîtront ici." /> : null}
           {actions.map((a) => (
             <ActionItem
@@ -158,6 +164,12 @@ export default function HomeScreen() {
           )}
         </>
       ) : null}
+      <Sheet visible={addingPerson} title="Ajouter un enfant" onClose={() => setAddingPerson(false)}>
+        <AppText variant="callout" tone="muted">
+          Un parent avec plusieurs enfants au club : retrouve le nom de l&apos;autre enfant et ouvre son lien sur ce téléphone. Les entraînements de chacun s&apos;afficheront ensemble ici.
+        </AppText>
+        <IdentifyFlow clubSlug={club.slug} />
+      </Sheet>
       {center.data?.invalidTokenIndexes.length ? (
         <AppText variant="meta" tone="subtle">
           Une personne de cet appareil n&apos;est plus accessible (lien renouvelé par le club).
@@ -265,6 +277,7 @@ function AgendaEntry({ item, home, severalPeople, club, base }: { item: AgendaIt
 }
 
 const styles = StyleSheet.create({
+  start: { alignSelf: "flex-start" },
   badges: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   actions: { gap: spacing.sm },
   chip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: radius.pill },
