@@ -2,8 +2,8 @@ import * as Crypto from "expo-crypto";
 import { base64url, utf8 } from "./base64url";
 
 /**
- * PKCE S256 (RFC 7636) — même protocole que l'app Capacitor et la page web
- * `/public/{slug}/auth/app` : verifier 32 octets aléatoires (43 caractères),
+ * PKCE S256 (RFC 7636) — même protocole que la page web
+ * `/public/{slug}/auth/app` et `ball-manager-back` : verifier 32 octets aléatoires (43 caractères),
  * challenge = base64url(SHA-256(verifier)), state aléatoire 16 octets.
  */
 export interface Pkce {

@@ -1,10 +1,14 @@
-# Migration depuis Capacitor
+# Migration depuis Capacitor (historique)
 
-Source : `ball-manager-web`, branche `claude/ios-app`, dossier `mobile/` (Vite + React embarqué dans Capacitor, qui importe `src/` du web par alias). Le code Capacitor **n'est pas supprimé** : il sert de référence (voir `CAPACITOR_EXPO_PARITY.md`).
+> **STATUS: RETIRED**
+> Capacitor is no longer part of the production architecture.
+> Expo / React Native is the only Ball Manager mobile application.
+
+Source : `ball-manager-web`, branche `claude/ios-app` (historique), dossier `mobile/` (Vite + React embarqué dans Capacitor, qui importe `src/` du web par alias). Le code Capacitor est **supprimé** de `ball-manager-web` (branche `claude/mobile-support`) ; il reste consultable dans l'historique Git de `claude/ios-app`.
 
 ## Capacitor current state
 
-Bundle Vite local, projet Xcode `mobile/ios`, plugins officiels `app` et `push-notifications`, plugin natif local `BMNative`. Réutilise les composants UI du web (shims `next/link`, `next/image`, `next/navigation`). Tests : 3 fichiers (`auth-service`, `session-store`, `universal-link-router`). **Jamais compilé ni lancé sur iPhone** (audit `IOS_AUDIT.md` : environnement sans Xcode).
+Bundle Vite local, projet Xcode `mobile/ios`, plugins officiels `app` et `push-notifications`, plugin natif local `BMNative`. Réutilise les composants UI du web (shims `next/link`, `next/image`, `next/navigation`). Tests : 3 fichiers (`auth-service`, `session-store`, `universal-link-router`). **Jamais compilé ni lancé sur iPhone** (environnement sans Xcode).
 
 ## Authentication protocol
 

@@ -14,7 +14,21 @@ Bundle ID `fr.ballmanager.app`, Team ID `YFZ72KY47V`. Étapes manuelles : `MANUA
 | Confidentialité | `https://www.ball-manager.fr/confidentialite` |
 | Assistance | `https://www.ball-manager.fr/support` |
 
-Description et mots-clés : reprendre `ball-manager-web/docs/APP_STORE.md` (inchangés).
+| Copyright | à renseigner (titulaire réel) |
+
+**Description (proposition)**
+
+> L'app officielle des clubs de basket qui utilisent Ball Manager. Convocations, disponibilités, entraînements, matchs et résultats de ton équipe, au même endroit.
+>
+> • Reçois ta convocation et confirme ta présence en un geste.
+> • Réponds aux entraînements : présent, absent ou incertain.
+> • Suis les changements de match (horaire, salle, report) dès qu'ils sont connus.
+> • Un seul iPhone pour toute la famille : ajoute chaque enfant.
+> • Coachs : demandes de disponibilités, convocations et relances depuis le téléphone.
+>
+> Accès réservé aux licenciés des clubs Ball Manager : ton club t'envoie ton lien de connexion par email.
+
+Mots-clés (100 car.) : `basket,club,convocation,entraînement,match,FFBB,équipe,coach,licencié,planning`
 
 ## Revue Apple (Guideline 4.2)
 

@@ -1,4 +1,10 @@
-# Parité Capacitor / Expo
+# Parité Capacitor / Expo (historique)
+
+> **STATUS: RETIRED**
+> Capacitor is no longer part of the production architecture.
+> Expo / React Native is the only Ball Manager mobile application.
+
+Statut final : **CAPACITOR = RETIRED** · **EXPO = ACTIVE MOBILE ARCHITECTURE**. L'app Capacitor (`ball-manager-web/mobile/`) a été supprimée ; ce tableau reste comme trace de la parité atteinte.
 
 Légende validation : IMPL = implémenté · UNIT = testé unitairement · DEVICE = testé sur iPhone. **Aucune ligne n'est DEVICE.**
 
@@ -26,4 +32,4 @@ Légende validation : IMPL = implémenté · UNIT = testé unitairement · DEVIC
 | Profil / version / déconnexion | oui | natif | session | IMPL | device |
 | Hors ligne / réseau | bandeau | bandeaux + cache | — | UNIT (erreurs) | device |
 | Build | **jamais compilé** | **aucun build EAS exécuté** | — | — | Development Build |
-| Suppression Capacitor | — | — | — | — | **KEEP** (décision en fin de doc final) |
+| Suppression Capacitor | — | — | — | — | **RETIRED** : `mobile/` supprimé de `ball-manager-web` (branche `claude/mobile-support`) |

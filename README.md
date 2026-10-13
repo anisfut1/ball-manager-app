@@ -9,7 +9,7 @@ C'est un client du backend `ball-manager-back` : aucun second backend, aucun sec
 | `anisfut1/ball-manager-back` | API Hono (Vercel), Supabase, FFBB/FBI, OpenAPI, APNs, authentification mobile |
 | `anisfut1/ball-manager-app` | **ce dépôt** |
 
-Documentation : [architecture](docs/MOBILE_ARCHITECTURE.md) · [auth](docs/AUTH.md) · [liens universels](docs/UNIVERSAL_LINKS.md) · [push](docs/PUSH.md) · [parité](docs/MOBILE_PARITY_MATRIX.md) · [tests iPhone](docs/IOS_TEST_MATRIX.md) · [App Store](docs/APP_STORE.md) · [migration Capacitor](docs/MIGRATION_FROM_CAPACITOR.md) · [parité Capacitor/Expo](docs/CAPACITOR_EXPO_PARITY.md) · [manuel](MANUAL_STEPS.md)
+Documentation : [architecture](docs/MOBILE_ARCHITECTURE.md) · [auth](docs/AUTH.md) · [liens universels](docs/UNIVERSAL_LINKS.md) · [push](docs/PUSH.md) · [parité](docs/MOBILE_PARITY_MATRIX.md) · [tests iPhone](docs/IOS_TEST_MATRIX.md) · [App Store](docs/APP_STORE.md) · [migration Capacitor (retirée, historique)](docs/MIGRATION_FROM_CAPACITOR.md) · [parité Capacitor/Expo (historique)](docs/CAPACITOR_EXPO_PARITY.md) · [manuel](MANUAL_STEPS.md)
 
 ## Prérequis
 
