@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { authApi } from "@/api/endpoints/auth";
@@ -8,20 +9,20 @@ import { queryKeys } from "@/api/queryKeys";
 import { useSession } from "@/auth/SessionProvider";
 import { SsoCancelled } from "@/auth/callback";
 import { AppText, Banner, Button, Screen } from "@/components/ui";
-import { PasteLink } from "@/features/auth/PasteLink";
+import { ClubBadge } from "@/features/onboarding/ClubBadge";
+import { ClubThemeProvider } from "@/design/ClubTheme";
 import { IdentifyFlow } from "@/features/identify/IdentifyFlow";
 import { peekPendingDestination } from "@/linking/pendingDestination";
 import { destinationAfterLogin } from "@/navigation/after-login";
-import { spacing } from "@/design";
+import { colors, spacing } from "@/design";
 
-/** Connexion à un club : Safari (un geste si déjà connecté au site) ou lien par email. */
+/** Connexion à un club : on se retrouve par son nom (lien par email), ou en un geste si déjà connecté au site dans Safari. */
 export default function ClubLoginScreen() {
   const { clubSlug = "" } = useLocalSearchParams<{ clubSlug: string }>();
   const session = useSession();
   const club = useQuery({ queryKey: queryKeys.club(clubSlug), queryFn: () => authApi.club(clubSlug), enabled: !!clubSlug });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"choice" | "email">("choice");
   const pending = peekPendingDestination();
   const name = club.data?.name ?? clubSlug;
 
@@ -40,27 +41,45 @@ export default function ClubLoginScreen() {
   }
 
   return (
-    <Screen>
-      <Button label="Changer de club" variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/bienvenue"))} style={styles.back} />
-      <AppText variant="title" accessibilityRole="header">
-        {name}
-      </AppText>
-      {pending?.clubSlug === clubSlug ? <Banner tone="info" message="Après la connexion, tu arriveras directement sur la page demandée." /> : null}
-      {error ? <Banner tone="danger" message={error} /> : null}
-      {mode === "choice" ? (
-        <View style={styles.choices}>
-          <Button label="Continuer avec Ball Manager" size="lg" loading={busy} onPress={() => void sso()} fullWidth />
-          <AppText variant="meta" tone="muted">
-            Déjà connecté sur le site Ball Manager dans Safari ? Continue en un geste. Sinon, reçois ton lien par email : il ouvrira directement l&apos;app.
+    <ClubThemeProvider accentColor={club.data?.accentColor}>
+      <Screen>
+        <Button label="Changer de club" variant="ghost" icon={<Ionicons name="chevron-back" size={18} color={colors.muted} />} onPress={() => (router.canGoBack() ? router.back() : router.replace("/bienvenue"))} style={styles.back} />
+        <View style={styles.header}>
+          <ClubBadge name={name} logoUrl={club.data?.logoUrl ?? null} accentColor={club.data?.accentColor} size={72} />
+          <AppText variant="eyebrow" tone="muted">
+            {name}
           </AppText>
-          <Button label="Recevoir un lien de connexion" variant="secondary" size="lg" onPress={() => setMode("email")} fullWidth />
-          <PasteLink />
+          <AppText variant="display" accessibilityRole="header" style={styles.center}>
+            Qui es-tu ?
+          </AppText>
         </View>
-      ) : (
+        {pending?.clubSlug === clubSlug ? <Banner tone="info" message="Après la connexion, tu arriveras directement sur la page demandée." /> : null}
+        {error ? <Banner tone="danger" message={error} /> : null}
         <IdentifyFlow clubSlug={clubSlug} />
-      )}
-    </Screen>
+        <View style={styles.or}>
+          <View style={styles.rule} />
+          <AppText variant="meta" tone="subtle">
+            ou
+          </AppText>
+          <View style={styles.rule} />
+        </View>
+        <Button
+          label="Déjà connecté sur le site ? Continuer"
+          variant="secondary"
+          icon={<Ionicons name="compass-outline" size={18} color={colors.foreground} />}
+          loading={busy}
+          onPress={() => void sso()}
+          fullWidth
+        />
+      </Screen>
+    </ClubThemeProvider>
   );
 }
 
-const styles = StyleSheet.create({ back: { alignSelf: "flex-start", paddingHorizontal: 0 }, choices: { gap: spacing.md } });
+const styles = StyleSheet.create({
+  back: { alignSelf: "flex-start", paddingHorizontal: 0 },
+  header: { alignItems: "center", gap: spacing.sm, paddingTop: spacing.sm },
+  center: { textAlign: "center" },
+  or: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  rule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.borderStrong },
+});

@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { ApiError, humanMessage } from "@/api/errors";
 import { identifyApi, type LicencieMatch } from "@/api/endpoints/identify";
-import { AppText, Banner, Button, Card, ListRow, TextField, type BannerTone } from "@/components/ui";
-import { spacing } from "@/design";
+import { AppText, Avatar, Banner, Button, Card, ListRow, TextField, type BannerTone } from "@/components/ui";
+import { colors, spacing } from "@/design";
+import { NAME_SEARCH_DEBOUNCE_MS, searchableNameQuery } from "./name-query";
 
 type Step = { kind: "search" } | { kind: "confirm"; licencie: LicencieMatch; needsEmail: boolean } | { kind: "sent"; firstName: string; maskedEmail: string } | { kind: "pending"; firstName: string } | { kind: "request" } | { kind: "request-sent" };
 
@@ -15,24 +17,31 @@ type Step = { kind: "search" } | { kind: "confirm"; licencie: LicencieMatch; nee
 export function IdentifyFlow({ clubSlug }: { clubSlug: string }) {
   const [step, setStep] = useState<Step>({ kind: "search" });
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<LicencieMatch[] | null>(null);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: BannerTone; text: string } | null>(null);
 
-  async function search() {
-    if (query.trim().split(/\s+/).length < 2) return setFeedback({ tone: "info", text: "Tape ton prénom et ton nom, par exemple « Léa Martin »." });
-    setBusy(true);
-    setFeedback(null);
-    try {
-      setResults(await identifyApi.search(clubSlug, query.trim()));
-    } catch (error) {
-      setFeedback({ tone: "danger", text: humanMessage(error) });
-    } finally {
-      setBusy(false);
-    }
-  }
+  const searchable = searchableNameQuery(query);
+  // Recherche au fil de la frappe : une requête par nom stable (limite serveur : 30/min).
+  const [found, setFound] = useState<{ q: string; list: LicencieMatch[] | null; error: string | null } | null>(null);
+  const current = found && found.q === searchable ? found : null;
+  const results = current?.list ?? null;
+  const searching = !!searchable && !current;
+  useEffect(() => {
+    if (!searchable) return;
+    let alive = true;
+    const timer = setTimeout(() => {
+      identifyApi
+        .search(clubSlug, searchable)
+        .then((list) => alive && setFound({ q: searchable, list, error: null }))
+        .catch((error: unknown) => alive && setFound({ q: searchable, list: null, error: humanMessage(error) }));
+    }, NAME_SEARCH_DEBOUNCE_MS);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [clubSlug, searchable]);
 
   async function send(current: Extract<Step, { kind: "confirm" }>) {
     setBusy(true);
@@ -126,28 +135,72 @@ export function IdentifyFlow({ clubSlug }: { clubSlug: string }) {
     );
   }
   return (
-    <Card>
-      <TextField label="Ton prénom et ton nom (ou ceux de ton enfant)" value={query} onChangeText={setQuery} autoCapitalize="words" autoCorrect={false} returnKeyType="search" onSubmitEditing={() => void search()} placeholder="Léa Martin" />
+    <View style={styles.search}>
+      <TextField
+        label="Ton prénom et ton nom (ou ceux de ton enfant)"
+        value={query}
+        onChangeText={setQuery}
+        autoCapitalize="words"
+        autoCorrect={false}
+        autoFocus
+        returnKeyType="search"
+        placeholder="Léa Martin"
+        textContentType="name"
+      />
       {banner}
-      <Button label="Rechercher" loading={busy} onPress={() => void search()} fullWidth />
-      {results ? (
+      {current?.error ? <Banner tone="danger" message={current.error} /> : null}
+      {!searchable ? (
+        <View style={styles.hint}>
+          <Ionicons name="sparkles-outline" size={16} color={colors.subtle} />
+          <AppText variant="meta" tone="muted" style={styles.flex}>
+            Tape ton prénom puis ton nom : les fiches du club s&apos;affichent au fil de la frappe.
+          </AppText>
+        </View>
+      ) : null}
+      {searchable && searching && !results ? <ActivityIndicator color={colors.subtle} style={styles.spinner} /> : null}
+      {searchable && results ? (
         results.length ? (
-          <View style={styles.list}>
-            {results.map((l) => (
-              <ListRow key={l.id} title={`${l.firstName} ${l.lastInitial}.`} onPress={() => setStep({ kind: "confirm", licencie: l, needsEmail: false })} />
+          <Card padded={false} style={styles.results}>
+            {results.map((l, i) => (
+              <View key={l.id}>
+                {i ? <View style={styles.separator} /> : null}
+                <ListRow
+                  title={`${l.firstName} ${l.lastInitial}.`}
+                  subtitle="C'est moi"
+                  leading={<Avatar firstName={l.firstName} lastName={l.lastInitial} size={40} />}
+                  onPress={() => setStep({ kind: "confirm", licencie: l, needsEmail: false })}
+                  accessibilityHint="Recevoir mon lien de connexion"
+                />
+              </View>
             ))}
-          </View>
+          </Card>
+        ) : searching ? (
+          <ActivityIndicator color={colors.subtle} style={styles.spinner} />
         ) : (
-          <View style={styles.list}>
+          <Card>
+            <AppText variant="headline">Personne de ce nom au club</AppText>
             <AppText variant="callout" tone="muted">
-              Personne de ce nom au club.
+              Vérifie l&apos;orthographe, ou demande au club de t&apos;ajouter.
             </AppText>
-            <Button label="Demander un accès au club" variant="secondary" onPress={() => setStep({ kind: "request" })} />
-          </View>
+            <Button label="Demander un accès au club" variant="secondary" onPress={() => setStep({ kind: "request" })} fullWidth />
+          </Card>
         )
       ) : null}
-    </Card>
+      <View style={styles.hint}>
+        <Ionicons name="shield-checkmark-outline" size={16} color={colors.subtle} />
+        <AppText variant="meta" tone="subtle" style={styles.flex}>
+          Pour protéger les licenciés, seuls le prénom et l&apos;initiale du nom s&apos;affichent. Ton lien de connexion part à l&apos;adresse connue du club.
+        </AppText>
+      </View>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({ list: { gap: spacing.xs } });
+const styles = StyleSheet.create({
+  search: { gap: spacing.md },
+  hint: { flexDirection: "row", gap: spacing.xs, alignItems: "flex-start" },
+  flex: { flex: 1 },
+  spinner: { alignSelf: "center", paddingVertical: spacing.md },
+  results: { paddingHorizontal: spacing.lg },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+});
