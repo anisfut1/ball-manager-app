@@ -30,6 +30,7 @@ export default function SeriesScreen() {
   const problems = slots.map(slotProblems).filter(Boolean);
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.trainingSeries(club.clubSlug, teamId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.teamTrainings(club.clubSlug, teamId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.planningAll(club.clubSlug) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.actionCenterAll(club.clubSlug) });
   };

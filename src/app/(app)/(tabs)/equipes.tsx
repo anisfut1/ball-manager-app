@@ -1,48 +1,97 @@
+import { useMemo } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { teamLifeApi } from "@/api/endpoints/teamLife";
+import { Ionicons } from "@expo/vector-icons";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { clubSpaceApi } from "@/api/endpoints/clubSpace";
 import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { useActiveClub } from "@/auth/SessionProvider";
-import { Badge, Card, CardSkeletons, ErrorState, ListRow, Screen, SectionHeader } from "@/components/ui";
+import { AppText, CardSkeletons, EmptyState, ErrorState, Screen } from "@/components/ui";
+import { colors, radius, shadows, spacing } from "@/design";
+import { useClubAccent } from "@/design/ClubTheme";
 import { ClubHeader } from "@/features/home/ClubHeader";
-import { useRoles } from "@/features/roles/useRoles";
+import { TeamPage } from "@/features/team/TeamPage";
+import { collectTeams } from "@/features/team-life/web-labels";
 
-/** Équipes : les miennes d'abord (jouées / coachées), puis tout le club. */
-export default function TeamsScreen() {
+/**
+ * Onglet « Équipe » — copie du PublicTeamsApp du web : les équipes des
+ * personnes de l'appareil, équipes coachées d'abord ; une seule équipe →
+ * sa page directement.
+ */
+export default function TeamsTab() {
   const club = useActiveClub();
-  const { roles } = useRoles();
-  const teams = useQuery({ queryKey: queryKeys.teams(club.clubSlug), queryFn: () => teamLifeApi.teams(club.clubSlug), staleTime: 10 * 60_000 });
-  const mineIds = new Set([...roles.coachTeams.map((t) => t.id), ...roles.memberTeams.map((t) => t.id)]);
-  const active = (teams.data?.teams ?? []).filter((t) => t.active);
-  const mine = active.filter((t) => mineIds.has(t.id));
-  const others = active.filter((t) => !mineIds.has(t.id));
-  const open = (id: string) => router.push(`/c/${club.clubSlug}/equipes/${id}`);
+  const accent = useClubAccent();
+  const queryClient = useQueryClient();
+  const people = club.people.map((p) => p.licencieId);
+  const homes = useQueries({ queries: people.map((id) => ({ queryKey: queryKeys.home(club.clubSlug, id), queryFn: () => clubSpaceApi.home(club.clubSlug, id) })) });
+  const pending = homes.some((h) => h.isPending);
+  const homeData = homes.map((h) => h.data);
+  const loaded = useMemo(() => homeData.flatMap((d) => (d ? [d] : [])), [homeData]);
+  const failed = homes.find((h) => h.error)?.error ?? null;
+  const teams = useMemo(() => collectTeams(loaded), [loaded]);
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["home", club.clubSlug] });
+    void queryClient.invalidateQueries({ queryKey: ["team-overview", club.clubSlug] });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.planningAll(club.clubSlug) });
+  };
+
   return (
-    <Screen refreshing={teams.isRefetching} onRefresh={() => void teams.refetch()}>
-      <ClubHeader title="Équipes" />
-      {teams.isPending ? <CardSkeletons count={2} /> : null}
-      {teams.error ? <ErrorState message={humanMessage(teams.error)} onRetry={() => void teams.refetch()} /> : null}
-      {mine.length ? (
+    <Screen refreshing={false} onRefresh={refresh}>
+      {teams.length === 1 && !pending ? (
+        <TeamPage teamId={teams[0]!.id} />
+      ) : (
         <>
-          <SectionHeader title="Mes équipes" />
-          <Card padded={false} style={{ paddingHorizontal: 16 }}>
-            {mine.map((t) => (
-              <ListRow key={t.id} title={t.name} subtitle={t.category} trailing={roles.coachTeams.some((c) => c.id === t.id) ? <Badge tone="info" label="Coach" /> : undefined} onPress={() => open(t.id)} />
+          <ClubHeader title="Mes équipes" />
+          <AppText variant="callout" tone="muted">
+            Prochain match, entraînements et effectif.
+          </AppText>
+          {pending ? <CardSkeletons count={3} /> : null}
+          {!pending && failed && !loaded.length ? <ErrorState title="Équipes indisponibles" message={humanMessage(failed)} onRetry={refresh} /> : null}
+          {!pending && loaded.length > 0 && teams.length === 0 ? <EmptyState icon="people-outline" title="Aucune équipe" message="Aucune équipe n'est encore associée à ton profil. Préviens le club." /> : null}
+          <View style={styles.list}>
+            {teams.map((t) => (
+              <Pressable
+                key={t.id}
+                accessibilityRole="button"
+                accessibilityLabel={t.name}
+                onPress={() => router.push(`/c/${club.clubSlug}/equipes/${t.id}`)}
+                style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+              >
+                <Ionicons name={t.coach ? "megaphone-outline" : "shirt-outline"} size={18} color={t.coach ? colors.info : accent.text} />
+                <View style={styles.flex}>
+                  <AppText variant="bodyStrong" numberOfLines={1}>
+                    {t.name}
+                  </AppText>
+                  <AppText variant="meta" tone="muted" numberOfLines={1}>
+                    {t.coach ? "Tu coaches cette équipe" : t.who.join(", ")}
+                  </AppText>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.subtle} />
+              </Pressable>
             ))}
-          </Card>
+          </View>
         </>
-      ) : null}
-      {others.length ? (
-        <>
-          <SectionHeader title="Le club" />
-          <Card padded={false} style={{ paddingHorizontal: 16 }}>
-            {others.map((t) => (
-              <ListRow key={t.id} title={t.name} subtitle={t.category} onPress={() => open(t.id)} />
-            ))}
-          </Card>
-        </>
-      ) : null}
+      )}
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  list: { gap: spacing.sm },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: 56,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+    ...shadows.card,
+  },
+  pressed: { opacity: 0.85 },
+  flex: { flex: 1, gap: 2 },
+});

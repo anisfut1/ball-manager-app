@@ -78,10 +78,17 @@ function CoachTraining({ data, as }: { data: TrainingDetailDto; as: string }) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.training(club.clubSlug, t.id) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.actionCenterAll(club.clubSlug) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.planningAll(club.clubSlug) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.teamTrainings(club.clubSlug, t.team.id) });
   };
   const attendance = useMutation({ mutationFn: (v: { licencieId: string; status: TrainingAttendanceValue }) => teamLifeApi.markAttendance(club.clubSlug, as, t.id, v.licencieId, v.status), onSuccess: refresh });
   const update = useMutation({
-    mutationFn: () => teamLifeApi.updateTraining(club.clubSlug, as, t.id, { date: form.date, startTime: form.startTime, endTime: form.endTime, locationLabel: form.location.trim() || null }),
+    mutationFn: () => teamLifeApi.updateTraining(club.clubSlug, as, t.id, {
+        date: form.date,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        // Lieu inchangé : on garde le gymnase du club (jamais converti en texte libre).
+        ...(t.location.clubVenueId && form.location === (t.location.label ?? "") ? { clubVenueId: t.location.clubVenueId, locationLabel: null } : { clubVenueId: null, locationLabel: form.location.trim() || null }),
+      }),
     onSuccess: () => (refresh(), setEdit(false)),
   });
   const cancel = useMutation({ mutationFn: () => teamLifeApi.cancelTraining(club.clubSlug, as, t.id, reason.trim() || null), onSuccess: () => (refresh(), setCancelOpen(false)) });

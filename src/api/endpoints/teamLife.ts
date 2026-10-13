@@ -82,6 +82,9 @@ export const teamLifeApi = {
     call(clubSlug, () => api().GET("/v1/public/clubs/{clubSlug}/team-life/teams/{teamId}/training-series", { params: { path: { clubSlug, teamId } }, headers: auth(clubSlug, as) })),
   createSeries: (clubSlug: string, as: string, teamId: string, body: CreateTrainingSeriesDto) =>
     call(clubSlug, () => api().POST("/v1/public/clubs/{clubSlug}/team-life/teams/{teamId}/training-series", { params: { path: { clubSlug, teamId } }, headers: auth(clubSlug, as), body })),
+  /** Modifier un créneau À PARTIR D'UNE DATE : les séances d'avant ne bougent jamais. */
+  updateSeries: (clubSlug: string, as: string, seriesId: string, body: Dto<"UpdateTrainingSeriesDto">) =>
+    call(clubSlug, () => api().PATCH("/v1/public/clubs/{clubSlug}/team-life/training-series/{seriesId}", { params: { path: { clubSlug, seriesId } }, headers: auth(clubSlug, as), body })),
   stopSeries: (clubSlug: string, as: string, seriesId: string, from?: string) =>
     call(clubSlug, () => api().DELETE("/v1/public/clubs/{clubSlug}/team-life/training-series/{seriesId}", { params: { path: { clubSlug, seriesId }, query: from ? { from } : {} }, headers: auth(clubSlug, as) })),
   updateTraining: (clubSlug: string, as: string, occurrenceId: string, body: Dto<"UpdateTrainingOccurrenceDto">) =>

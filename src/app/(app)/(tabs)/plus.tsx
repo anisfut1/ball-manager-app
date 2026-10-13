@@ -6,6 +6,7 @@ import { Avatar, Card, ListRow, Screen, SectionHeader } from "@/components/ui";
 import { colors, radius, spacing } from "@/design";
 import { useClubAccent } from "@/design/ClubTheme";
 import { ClubHeader } from "@/features/home/ClubHeader";
+import { useRoles } from "@/features/roles/useRoles";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -18,10 +19,11 @@ function Icon({ name }: { name: IconName }) {
   );
 }
 
-/** « Plus » : ce qui ne tient pas dans la barre du bas (Résultats et Dérogations du web, planning, profil). */
+/** « Plus » : ce qui ne tient pas dans la barre du bas (Résultats, Dérogations, Planning, Entraînements du web, profil). */
 export default function MoreTab() {
   const club = useActiveClub();
   const { person } = useSession();
+  const { roles } = useRoles();
   const base = `/c/${club.clubSlug}`;
   return (
     <Screen>
@@ -31,6 +33,9 @@ export default function MoreTab() {
         <ListRow title="Résultats" subtitle="Scores des derniers matchs" leading={<Icon name="trophy-outline" />} onPress={() => router.push("/resultats")} />
         <ListRow title="Dérogations" subtitle="Demandes de changement de date ou d'horaire" leading={<Icon name="time-outline" />} onPress={() => router.push(`${base}/derogations`)} />
         <ListRow title="Mon planning" subtitle="Matchs et entraînements, semaine par semaine" leading={<Icon name="calendar-outline" />} onPress={() => router.push("/planning")} />
+        {roles.isCoach || roles.isClubAdmin ? (
+          <ListRow title="Entraînements" subtitle="Créneaux, séances et présences de tes équipes" leading={<Icon name="barbell-outline" />} onPress={() => router.push(`${base}/entrainements`)} />
+        ) : null}
       </Card>
       <SectionHeader title="Moi" />
       <Card padded={false} style={styles.card}>
