@@ -24,4 +24,5 @@ export const queryKeys = {
   matches: (slug: string, period: string) => ["matches", slug, period] as const,
   tableLeaderboard: (slug: string) => ["table-leaderboard", slug] as const,
   standings: (slug: string) => ["standings", slug] as const,
+  results: (slug: string) => ["results", slug] as const,
 } as const;
