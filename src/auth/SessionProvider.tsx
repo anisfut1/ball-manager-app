@@ -11,6 +11,7 @@ import * as service from "./auth-service";
 import { createPkce } from "./pkce";
 import { activeClub, activePerson, EMPTY_STATE, withActiveClub, withActivePerson, withoutClub, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
 import { createSessionRepository } from "./session-repository";
+import type { SsoOutcome } from "./sso-outcome";
 import { isSignedIn, sessionReducer, type SessionStatus } from "./session-machine";
 import { secureStorage } from "./secure-storage";
 
@@ -25,6 +26,7 @@ const deps: service.AuthDeps = {
     const result = await WebBrowser.openAuthSessionAsync(url, callback, { preferEphemeralSession: false });
     return result.type === "success" ? result.url : null;
   },
+  dismissAuthSession: () => WebBrowser.dismissAuthSession(),
   webUrl: env.webUrl,
 };
 
@@ -36,7 +38,7 @@ export interface SessionContextValue {
   person: SessionPerson | null;
   bootstrapFromToken(clubSlug: string, token: string): Promise<void>;
   loginWithCode(clubSlug: string, code: string): Promise<string | null>;
-  ssoLogin(clubSlug: string, redirectPath?: string | null): Promise<string | null>;
+  ssoLogin(clubSlug: string, redirectPath?: string | null): Promise<SsoOutcome>;
   logout(clubSlug: string): Promise<void>;
   removePerson(clubSlug: string, licencieId: string): Promise<void>;
   setActivePerson(licencieId: string): Promise<void>;
@@ -127,8 +129,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       async ssoLogin(clubSlug, redirectPath) {
         const result = await service.ssoLogin(deps, stateRef.current, clubSlug, redirectPath);
+        // Relayé par un lien (feuille fermée) : la session est déjà établie par /lien ou /code.
+        if (result.kind === "superseded") return { kind: "superseded" };
         await signIn(result.state);
-        return result.redirectPath;
+        return { kind: "signed-in", redirectPath: result.redirectPath };
       },
       async logout(clubSlug) {
         // 1. jeton push détaché, 2. session révoquée, 3. trousseau, 4. cache, 5. destination en attente.
