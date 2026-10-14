@@ -22,6 +22,12 @@ PKCE : S256 seul, `state` vérifié, code à usage unique, expiration côté ser
 
 Dans l'ordre : jeton push détaché → session révoquée → Keychain nettoyé → cache React Query vidé (club concerné, tout si dernier club) → destination en attente effacée → retour à la connexion.
 
+## Connexion par lien pendant la feuille d'authentification
+
+Un utilisateur non identifié dans Safari ne peut se connecter, dans la feuille ouverte par « Continuer avec Ball Manager », que par un lien reçu par e-mail. Ce lien s'ouvre hors de la feuille, dans l'app (Universal Link), et crée la session par `/lien` (`bootstrapFromToken`) ou `/code` (`loginWithCode`).
+
+Quand l'une de ces deux connexions **aboutit** alors que la feuille est ouverte, l'app la ferme **une seule fois** (`WebBrowser.dismissAuthSession`, injecté dans `AuthDeps`). `ssoLogin` se résout alors en `{ kind: "superseded" }`, distinct de l'annulation : l'écran de connexion ne navigue pas et n'affiche rien (la navigation reste celle de `/lien` ou `/code`). Une connexion par lien qui **échoue** laisse la feuille ouverte ; une annulation par l'utilisateur garde son comportement (`SsoCancelled`, silencieux). Sans feuille ouverte, rien ne change.
+
 ## Après connexion
 
 Destination d'origine mémorisée → authentification → vérification d'accès → écran exact (jamais l'accueil systématique). Voir `src/navigation/after-login.ts`.
