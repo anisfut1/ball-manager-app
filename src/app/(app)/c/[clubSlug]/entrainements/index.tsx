@@ -219,7 +219,7 @@ function TeamTrainings({ teamId, teamName, as }: { teamId: string; teamName: str
                   <Pressable key={t.id} accessibilityRole="button" onPress={() => openTraining(t.id)} style={({ pressed }) => [pressed && styles.pressed]}>
                     <Card padded={false} style={[styles.row, cancelled && styles.cancelled]}>
                       <View style={styles.time}>
-                        <AppText variant="numeric" style={[styles.bold, cancelled && styles.strike]}>
+                        <AppText variant="numeric" numberOfLines={1} style={[styles.bold, cancelled && styles.strike]}>
                           {timeOf(t.startsAt, tz)}
                         </AppText>
                         <AppText variant="meta" tone="muted">
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   pastDay: { width: 104 },
   pressed: { opacity: 0.8 },
   dayTitle: { paddingBottom: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  time: { width: 48, alignItems: "center" },
+  time: { minWidth: 60, alignItems: "center" },
   bold: { fontWeight: "600" },
   strike: { textDecorationLine: "line-through" },
   cancelled: { opacity: 0.7 },

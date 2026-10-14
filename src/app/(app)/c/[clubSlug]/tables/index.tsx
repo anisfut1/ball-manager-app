@@ -187,13 +187,18 @@ function TableMatchCard({ match, meId, canManage, onChanged, onDesignate }: { ma
                 {isMe || canManage ? <Button label={isMe ? "Se retirer" : "Retirer"} variant={canManage ? "ghost" : "secondary"} loading={busy} onPress={() => confirmRemove(role, label, isMe, who)} /> : null}
               </View>
             ) : (
-              <View style={styles.postBody}>
-                <Ionicons name="person-outline" size={16} color={colors.subtle} />
-                <AppText variant="callout" tone="muted" style={styles.flex}>
-                  À attribuer
-                </AppText>
-                {canManage ? <Button label="Désigner" variant="secondary" onPress={() => onDesignate(role, label)} /> : null}
-                <Button label="Se positionner" loading={busy} icon={<Ionicons name="hand-left-outline" size={16} color={accent.ink} />} onPress={() => assign.mutate({ role, force: false })} />
+              <View style={styles.freeBody}>
+                <View style={styles.freeLabel}>
+                  <Ionicons name="person-outline" size={16} color={colors.subtle} />
+                  <AppText variant="callout" tone="muted" numberOfLines={1}>
+                    À attribuer
+                  </AppText>
+                </View>
+                {/* Boutons sur leur propre ligne : le libellé n'est jamais écrasé (« À / attrib / uer »). */}
+                <View style={styles.freeActions}>
+                  {canManage ? <Button label="Désigner" variant="secondary" onPress={() => onDesignate(role, label)} style={styles.flex} /> : null}
+                  <Button label="Se positionner" loading={busy} icon={<Ionicons name="hand-left-outline" size={16} color={accent.ink} />} onPress={() => assign.mutate({ role, force: false })} style={styles.flex} />
+                </View>
               </View>
             )}
             {error?.role === role ? (
@@ -232,5 +237,8 @@ const styles = StyleSheet.create({
   postHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   postBody: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   toggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  freeBody: { gap: spacing.sm },
+  freeLabel: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  freeActions: { flexDirection: "row", gap: spacing.sm },
   force: { gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.warningSoft },
 });

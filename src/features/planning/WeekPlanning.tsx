@@ -90,7 +90,7 @@ function EventCard({ event, tz, accentSoft, accentText, onPress }: { event: Plan
     <Pressable accessibilityRole="button" accessibilityLabel={`${title}, ${timeOf(event.startsAt, tz)}`} onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
       <Card padded={false} style={[styles.card, cancelled && styles.cancelled]}>
         <View style={styles.time}>
-          <AppText variant="numeric" style={[styles.timeText, cancelled && styles.strike]}>
+          <AppText variant="numeric" numberOfLines={1} style={[styles.timeText, cancelled && styles.strike]}>
             {timeOf(event.startsAt, tz)}
           </AppText>
           {event.endsAt ? (
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   dayTitle: { paddingBottom: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   card: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, padding: spacing.md },
   cancelled: { opacity: 0.7 },
-  time: { width: 48, alignItems: "center" },
+  time: { minWidth: 60, alignItems: "center" },
   timeText: { fontWeight: "600" },
   strike: { textDecorationLine: "line-through" },
   icon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
