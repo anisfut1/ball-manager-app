@@ -27,7 +27,30 @@ export interface AuthDeps {
   createPkce(): Promise<Pkce>;
   /** Ouvre ASWebAuthenticationSession ; renvoie l'URL de rappel, ou null si annulé. */
   openAuthSession(url: string, callback: string): Promise<string | null>;
+  /** Ferme la feuille ouverte par `openAuthSession` (sans effet si aucune). */
+  dismissAuthSession?(): void;
   webUrl: string;
+}
+
+/** Suivi de la feuille d'authentification, par jeu de dépendances (sans React ni module natif). */
+interface SheetState {
+  open: boolean;
+  superseded: boolean;
+}
+const sheets = new WeakMap<AuthDeps, SheetState>();
+
+function sheetOf(deps: AuthDeps): SheetState {
+  let sheet = sheets.get(deps);
+  if (!sheet) sheets.set(deps, (sheet = { open: false, superseded: false }));
+  return sheet;
+}
+
+/** Connexion aboutie par lien pendant la feuille : on la ferme, UNE seule fois. */
+function closeSheetOnLinkLogin(deps: AuthDeps): void {
+  const sheet = sheetOf(deps);
+  if (!sheet.open || sheet.superseded) return;
+  sheet.superseded = true;
+  deps.dismissAuthSession?.();
 }
 
 async function toClubSession(deps: AuthDeps, clubSlug: string, dto: DeviceSessionDto): Promise<ClubSession> {
@@ -49,14 +72,20 @@ export async function bootstrapFromToken(deps: AuthDeps, state: SessionState, cl
   if (existing) {
     const info = await deps.api.addPeople(clubSlug, existing.secret, [token]);
     const next = withPeople(state, clubSlug, info.people);
-    return withClub(next, next.clubs[clubSlug]!);
+    const result = withClub(next, next.clubs[clubSlug]!);
+    closeSheetOnLinkLogin(deps);
+    return result;
   }
-  return withClub(state, await toClubSession(deps, clubSlug, await deps.api.createSession(clubSlug, [token], deps.meta)));
+  const next = withClub(state, await toClubSession(deps, clubSlug, await deps.api.createSession(clubSlug, [token], deps.meta)));
+  closeSheetOnLinkLogin(deps);
+  return next;
 }
 
 export async function loginWithCode(deps: AuthDeps, state: SessionState, clubSlug: string, code: string): Promise<{ state: SessionState; redirectPath: string | null }> {
   const dto = await deps.api.exchangeCode(clubSlug, code, undefined, deps.meta);
-  return { state: withClub(state, await toClubSession(deps, clubSlug, dto)), redirectPath: dto.redirectPath };
+  const next = withClub(state, await toClubSession(deps, clubSlug, dto));
+  closeSheetOnLinkLogin(deps);
+  return { state: next, redirectPath: dto.redirectPath };
 }
 
 export function ssoUrl(webUrl: string, clubSlug: string, pkce: Pkce, redirectPath?: string | null): string {
@@ -65,14 +94,36 @@ export function ssoUrl(webUrl: string, clubSlug: string, pkce: Pkce, redirectPat
   return `${webUrl}/public/${encodeURIComponent(clubSlug)}/auth/app?${query.toString()}`;
 }
 
-/** Connexion Safari : annulation par l'utilisateur = `SsoCancelled` (jamais un message d'erreur). */
-export async function ssoLogin(deps: AuthDeps, state: SessionState, clubSlug: string, redirectPath?: string | null): Promise<{ state: SessionState; redirectPath: string | null }> {
+export type SsoLoginResult =
+  | { kind: "signed-in"; state: SessionState; redirectPath: string | null }
+  /** Feuille fermée par l'app après une connexion par lien : `state` est celui reçu, inchangé. */
+  | { kind: "superseded"; state: SessionState; redirectPath: null };
+
+/**
+ * Connexion Safari : annulation par l'utilisateur = `SsoCancelled` (jamais un message d'erreur).
+ * Feuille fermée par l'app parce qu'un lien a connecté l'utilisateur = `superseded`.
+ */
+export async function ssoLogin(deps: AuthDeps, state: SessionState, clubSlug: string, redirectPath?: string | null): Promise<SsoLoginResult> {
   const pkce = await deps.createPkce();
-  const callbackUrl = await deps.openAuthSession(ssoUrl(deps.webUrl, clubSlug, pkce, redirectPath), SSO_CALLBACK);
-  if (!callbackUrl) throw new SsoCancelled();
+  const sheet = sheetOf(deps);
+  sheet.open = true;
+  sheet.superseded = false;
+  let callbackUrl: string | null;
+  try {
+    callbackUrl = await deps.openAuthSession(ssoUrl(deps.webUrl, clubSlug, pkce, redirectPath), SSO_CALLBACK);
+  } finally {
+    sheet.open = false;
+  }
+  if (!callbackUrl) {
+    if (sheet.superseded) {
+      sheet.superseded = false;
+      return { kind: "superseded", state, redirectPath: null };
+    }
+    throw new SsoCancelled();
+  }
   const { code } = parseSsoCallback(callbackUrl, pkce.state);
   const dto = await deps.api.exchangeCode(clubSlug, code, pkce.verifier, deps.meta);
-  return { state: withClub(state, await toClubSession(deps, clubSlug, dto)), redirectPath: dto.redirectPath };
+  return { kind: "signed-in", state: withClub(state, await toClubSession(deps, clubSlug, dto)), redirectPath: dto.redirectPath };
 }
 
 /**

@@ -8,12 +8,12 @@ import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { useSession } from "@/auth/SessionProvider";
 import { SsoCancelled } from "@/auth/callback";
+import { routeAfterSso } from "@/auth/sso-outcome";
 import { AppText, Banner, Button, Screen } from "@/components/ui";
 import { ClubBadge } from "@/features/onboarding/ClubBadge";
 import { ClubThemeProvider } from "@/design/ClubTheme";
 import { IdentifyFlow } from "@/features/identify/IdentifyFlow";
 import { peekPendingDestination } from "@/linking/pendingDestination";
-import { destinationAfterLogin } from "@/navigation/after-login";
 import { colors, spacing } from "@/design";
 
 /** Connexion à un club : on se retrouve par son nom (lien par email), ou en un geste si déjà connecté au site dans Safari. */
@@ -31,8 +31,8 @@ export default function ClubLoginScreen() {
     setError(null);
     try {
       // La destination d'origine éventuelle est gardée côté app (destinationAfterLogin).
-      const redirect = await session.ssoLogin(clubSlug, null);
-      router.replace(destinationAfterLogin(clubSlug, redirect));
+      const route = routeAfterSso(await session.ssoLogin(clubSlug, null), clubSlug);
+      if (route) router.replace(route);
     } catch (e) {
       if (!(e instanceof SsoCancelled)) setError(e instanceof Error && e.name === "SsoInvalid" ? e.message : humanMessage(e));
     } finally {
