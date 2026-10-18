@@ -2,28 +2,39 @@
  * Destination d'origine mise de côté pendant la connexion : un parent qui
  * ouvre une convocation sans être connecté y arrive APRÈS la connexion
  * (jamais renvoyé systématiquement sur l'accueil). En mémoire seulement,
- * jamais un jeton ; effacée à la déconnexion.
+ * jamais un jeton ; consommée dès qu'elle est utilisée, périmée après
+ * `PENDING_DESTINATION_TTL_MS`, effacée à la déconnexion.
  */
+export const PENDING_DESTINATION_TTL_MS = 30 * 60_000;
+
 export interface PendingDestination {
   clubSlug: string | null;
   route: string;
 }
 
 let pending: PendingDestination | null = null;
+/** Instant de création de la destination en attente (ms). */
+let pendingAt = 0;
 
 const SAFE_ROUTE = /^\/[A-Za-z0-9/_?=&%.-]*$/;
 
+/** Réécrire la même destination (le garde le fait à chaque rendu) ne prolonge pas sa durée de vie. */
 export function setPendingDestination(value: PendingDestination | null): void {
-  pending = value && SAFE_ROUTE.test(value.route) && !value.route.includes("..") && !value.route.startsWith("//") ? value : null;
+  const next = value && SAFE_ROUTE.test(value.route) && !value.route.includes("..") && !value.route.startsWith("//") ? value : null;
+  const unchanged = next && pending && next.clubSlug === pending.clubSlug && next.route === pending.route;
+  if (next && !unchanged) pendingAt = Date.now();
+  pending = next;
 }
 
+/** Destination en attente, ou `null` si aucune ou si elle est périmée (alors effacée). */
 export function peekPendingDestination(): PendingDestination | null {
+  if (pending && Date.now() - pendingAt >= PENDING_DESTINATION_TTL_MS) pending = null;
   return pending;
 }
 
 /** Consommée une seule fois ; `clubSlug` : seulement si elle concerne ce club (ou n'importe lequel). */
 export function takePendingDestination(clubSlug?: string): string | null {
-  if (!pending) return null;
+  if (!peekPendingDestination() || !pending) return null;
   if (clubSlug && pending.clubSlug && pending.clubSlug !== clubSlug) return null;
   const route = pending.route;
   pending = null;
