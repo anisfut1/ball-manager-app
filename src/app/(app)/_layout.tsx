@@ -6,10 +6,10 @@ import { colors } from "@/design";
 
 /** Garde d'authentification : voir `authGuard`. */
 export default function AppLayout() {
-  const { signedIn, status, refusedClub } = useSession();
+  const { signedIn, status, refusalRedirect } = useSession();
   const pathname = usePathname();
   const params = useGlobalSearchParams<Record<string, string>>();
-  const decision = authGuard({ signedIn, status, pathname, params, refusedClub });
+  const decision = authGuard({ signedIn, status, pathname, params, refusalRedirect });
   if (decision) {
     if (decision.pending) setPendingDestination(decision.pending);
     return <Redirect href={decision.redirect} />;

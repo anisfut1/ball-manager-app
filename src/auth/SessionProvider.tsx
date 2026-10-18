@@ -43,10 +43,10 @@ export interface SessionContextValue {
   refusedClubs: RefusedClub[];
   /** Ferme l'avis d'un club refusé. */
   dismissRefusal(clubSlug: string): void;
-  /** Club dont la session vient d'être refusée par le back (null : aucun, ou déjà présenté). */
-  refusedClub: string | null;
+  /** Club ACTIF dont la session vient d'être refusée : on y renvoie vers son identification (null : aucun, ou déjà fait). */
+  refusalRedirect: string | null;
   /** L'identification du club refusé est à l'écran : il ne faut plus y renvoyer. */
-  acknowledgeRefusal(): void;
+  acknowledgeRedirect(): void;
   bootstrapFromToken(clubSlug: string, token: string): Promise<void>;
   loginWithCode(clubSlug: string, code: string): Promise<string | null>;
   ssoLogin(clubSlug: string, redirectPath?: string | null): Promise<SsoOutcome>;
@@ -89,7 +89,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (expiredClubs.length > 0) dispatchRefusal({ type: "REFUSED", clubs: expiredClubs.map((clubSlug) => ({ clubSlug, clubName: before.clubs[clubSlug]?.clubName ?? clubSlug })) });
     await persist(state);
     for (const slug of expiredClubs) queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(slug) });
-    dispatch({ type: "REFRESHED", state, expiredClubs });
+    dispatch({ type: "REFRESHED", state, expiredClubs, redirectTo: before.active && expiredClubs.includes(before.active) ? before.active : undefined });
   }, [persist, queryClient]);
 
   useEffect(() => {
@@ -120,11 +120,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       onSessionInvalid: (slug) => {
         const refused = stateRef.current.clubs[slug];
         if (!refused) return;
+        const wasActive = stateRef.current.active === slug;
         dispatchRefusal({ type: "REFUSED", clubs: [{ clubSlug: slug, clubName: refused.clubName }] });
         const next = withoutClub(stateRef.current, slug);
         void persist(next);
         queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(slug) });
-        dispatch({ type: "SESSION_INVALID", state: next, clubSlug: slug });
+        dispatch({ type: "SESSION_INVALID", state: next, redirectTo: wasActive ? slug : undefined });
       },
     });
     return () => setCredentialSource(null);
@@ -163,8 +164,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       person: club ? activePerson(club) : null,
       refusedClubs: refusal.clubs,
       dismissRefusal: (clubSlug) => dispatchRefusal({ type: "DISMISSED", clubSlug }),
-      refusedClub: machine.refused ?? null,
-      acknowledgeRefusal: () => dispatch({ type: "REFUSAL_ACKNOWLEDGED" }),
+      refusalRedirect: machine.redirect ?? null,
+      acknowledgeRedirect: () => dispatch({ type: "REDIRECT_DONE" }),
       refresh,
       async bootstrapFromToken(clubSlug, token) {
         await signIn(await service.bootstrapFromToken(deps, stateRef.current, clubSlug, token), clubSlug);

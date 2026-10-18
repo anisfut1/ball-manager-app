@@ -8,6 +8,7 @@ import { bindAppFocus, createQueryClient } from "@/api/queryClient";
 import { SessionProvider, useSession } from "@/auth/SessionProvider";
 import { ClubThemeProvider } from "@/design/ClubTheme";
 import { colors } from "@/design";
+import { RefusedClubNotices } from "@/navigation/RefusedClubNotices";
 import { RefusedSessionRedirect } from "@/navigation/RefusedSessionRedirect";
 import { PushBridge } from "@/push/PushBridge";
 
@@ -25,6 +26,7 @@ function ThemedApp() {
       <StatusBar style="dark" />
       <PushBridge />
       <RefusedSessionRedirect />
+      <RefusedClubNotices />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
     </ClubThemeProvider>
   );

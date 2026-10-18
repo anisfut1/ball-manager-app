@@ -8,8 +8,8 @@ export interface GuardInput {
   status: SessionStatus;
   pathname: string;
   params: Record<string, string | string[] | undefined>;
-  /** Club dont la session vient d'être refusée (voir `useSession().refusedClub`). */
-  refusedClub?: string | null;
+  /** Club actif dont la session vient d'être refusée (voir `useSession().refusalRedirect`). */
+  refusalRedirect?: string | null;
 }
 
 export interface GuardDecision {
@@ -24,7 +24,7 @@ export interface GuardDecision {
  * Pas connecté : la destination demandée est mise de côté, puis connexion.
  * `null` = laisser passer.
  */
-export function authGuard({ signedIn, status, pathname, params, refusedClub = null }: GuardInput): GuardDecision | null {
+export function authGuard({ signedIn, status, pathname, params, refusalRedirect = null }: GuardInput): GuardDecision | null {
   if (signedIn) return null;
   const query = new URLSearchParams();
   for (const key of KEPT_PARAMS) {
@@ -33,6 +33,6 @@ export function authGuard({ signedIn, status, pathname, params, refusedClub = nu
   }
   const route = `${pathname}${query.toString() ? `?${query.toString()}` : ""}`;
   const clubSlug = /^\/c\/([a-z0-9-]+)/.exec(pathname)?.[1] ?? null;
-  const redirect = status === "EXPIRED" && !refusedClub ? "/session-expiree" : refusedClub ? `/connexion/${refusedClub}` : clubSlug ? `/connexion/${clubSlug}` : "/bienvenue";
+  const redirect = status === "EXPIRED" && !refusalRedirect ? "/session-expiree" : refusalRedirect ? `/connexion/${refusalRedirect}` : clubSlug ? `/connexion/${clubSlug}` : "/bienvenue";
   return { redirect, pending: route !== "/" ? { clubSlug, route } : null };
 }

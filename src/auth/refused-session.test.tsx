@@ -27,6 +27,7 @@ const replace = router.replace as jest.Mock;
 // Le secret doit respecter /^bmd_[A-Za-z0-9_-]{20,}$/ (sinon l'état stocké est jugé illisible).
 const SENTINEL_ALPHA = "bmd_SENTINEL_ALPHA_0123456789abcdef";
 const SENTINEL_BETA = "bmd_SENTINEL_BETA_0123456789abcdef";
+const SENTINEL_GAMMA = "bmd_SENTINEL_GAMMA_0123456789abcdef";
 const person = (id: string) => ({ licencieId: id, firstName: id, lastName: "Exemple", teamId: null });
 
 function club(clubSlug: string, secret: string): ClubSession {
@@ -34,6 +35,7 @@ function club(clubSlug: string, secret: string): ClubSession {
 }
 const ALPHA = club("club-alpha", SENTINEL_ALPHA);
 const BETA = club("club-beta", SENTINEL_BETA);
+const GAMMA = club("club-gamma", SENTINEL_GAMMA);
 const stateOf = (...clubs: ClubSession[]): SessionState => ({ v: 1, active: clubs[0]!.clubSlug, clubs: Object.fromEntries(clubs.map((c) => [c.clubSlug, c])) });
 
 type Reply = "ok" | "401" | "500" | "network";
@@ -56,11 +58,12 @@ function installNetwork(state: SessionState) {
 }
 
 function Probe() {
-  const { status, refusedClub } = useSession();
+  const { status, refusalRedirect, refusedClubs } = useSession();
   return (
     <>
       <Text testID="status">{status}</Text>
-      <Text testID="refused">{String(refusedClub ?? "")}</Text>
+      <Text testID="refused">{String(refusalRedirect ?? "")}</Text>
+      <Text testID="list">{refusedClubs.map((c) => c.clubSlug).join(",")}</Text>
     </>
   );
 }
@@ -99,13 +102,29 @@ beforeEach(async () => {
 afterEach(() => setApiClientForTests(null));
 
 describe("session refusée par le back (401 SESSION_INVALID) — plusieurs clubs", () => {
-  it("au lancement : renvoie vers l'identification de club-beta, club-alpha reste connecté", async () => {
+  it("au lancement, club actif = club-alpha, refus sur club-beta : aucune navigation, club-beta signalé", async () => {
     await mount(stateOf(ALPHA, BETA), { "club-beta": "401" });
+    expect(status()).toBe("AUTHENTICATED");
+    expect(refused()).toBe("");
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByTestId("list").props.children).toBe("club-beta");
+  });
+
+  it("club actif = club-beta, refus sur club-beta : redirigé vers son identification (lot A conservé)", async () => {
+    await mount(stateOf(BETA, ALPHA), { "club-beta": "401" });
     expect(status()).toBe("AUTHENTICATED");
     expect(refused()).toBe("club-beta");
     expect(replace).toHaveBeenCalledWith("/connexion/club-beta");
     expect(replace).not.toHaveBeenCalledWith("/bienvenue");
     expect(replace).not.toHaveBeenCalledWith("/session-expiree");
+  });
+
+  it("club actif = club-alpha, refus sur club-alpha ET club-beta (+ gamma intact) : redirigé vers club-alpha seulement, club-beta signalé", async () => {
+    await mount(stateOf(ALPHA, BETA, GAMMA), { "club-alpha": "401", "club-beta": "401" });
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("/connexion/club-alpha");
+    expect(screen.getByTestId("list").props.children).toBe("club-alpha,club-beta");
+    expect(stored().clubs["club-gamma"]?.secret).toBe(SENTINEL_GAMMA);
   });
 
   it("au lancement : le stockage garde SENTINEL_ALPHA intacte et retire club-beta", async () => {
@@ -115,17 +134,27 @@ describe("session refusée par le back (401 SESSION_INVALID) — plusieurs clubs
     expect(storedText()).not.toContain("SENTINEL_BETA");
   });
 
-  it("en cours d'usage : un appel de club-beta refusé → identification de club-beta, club-alpha intact", async () => {
+  it("en cours d'usage, club actif = club-alpha : un appel de club-beta refusé ne navigue pas, club-alpha intact", async () => {
     await mount(stateOf(ALPHA, BETA));
     expect(replace).not.toHaveBeenCalled();
     replies = { "club-beta": "401" };
     await act(async () => {
       await authApi.addPeople("club-beta", SENTINEL_BETA, ["x"]).catch(() => undefined);
     });
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/connexion/club-beta"));
-    expect(replace).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByTestId("list").props.children).toBe("club-beta"));
+    expect(replace).not.toHaveBeenCalled();
     expect(stored().clubs["club-alpha"]?.secret).toBe(SENTINEL_ALPHA);
     expect(storedText()).not.toContain("SENTINEL_BETA");
+  });
+
+  it("en cours d'usage, club actif = club-beta : un appel de club-beta refusé redirige vers son identification", async () => {
+    await mount(stateOf(BETA, ALPHA));
+    replies = { "club-beta": "401" };
+    await act(async () => {
+      await authApi.addPeople("club-beta", SENTINEL_BETA, ["x"]).catch(() => undefined);
+    });
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/connexion/club-beta"));
+    expect(replace).toHaveBeenCalledTimes(1);
   });
 
   it("le format stocké reste celui d'avant (mêmes clés, même version)", async () => {
@@ -137,12 +166,12 @@ describe("session refusée par le back (401 SESSION_INVALID) — plusieurs clubs
 });
 
 describe("session refusée — un seul club", () => {
-  it("club unique refusé : statut EXPIRED, club mémorisé, le garde envoie vers CE club (pas la liste)", async () => {
+  it("club unique refusé (donc actif) : statut EXPIRED, redirection vers CE club, le garde ne passe pas par la liste des clubs", async () => {
     await mount(stateOf(BETA), { "club-beta": "401" });
     expect(status()).toBe("EXPIRED");
     expect(refused()).toBe("club-beta");
     expect(storage.dump()[SESSION_KEY]).toBeUndefined();
-    const decision = authGuard({ signedIn: false, status: "EXPIRED", pathname: "/", params: {}, refusedClub: "club-beta" });
+    const decision = authGuard({ signedIn: false, status: "EXPIRED", pathname: "/", params: {}, refusalRedirect: "club-beta" });
     expect(decision?.redirect).toBe("/connexion/club-beta");
   });
 
