@@ -1,4 +1,5 @@
 import { api, call } from "../client";
+import { ApiError } from "../errors";
 import type { Dto } from "../types";
 
 /**
@@ -10,6 +11,9 @@ export type SessionInfoDto = Dto<"SessionInfoDto">;
 export type PublicClubDto = Dto<"PublicClubDto">;
 
 const bearer = (secret: string) => ({ Authorization: `Bearer ${secret}` });
+
+/** Issue de la suppression du compte pour UN club (jamais d'exception pour un échec attendu). */
+export type DeleteAccountResult = { kind: "deleted" } | { kind: "session_invalid" } | { kind: "failed"; error: ApiError };
 
 export interface DeviceMeta {
   appVersion?: string;
@@ -48,4 +52,20 @@ export const authApi = {
 
   removePushToken: (clubSlug: string, secret: string) =>
     call(clubSlug, () => api().DELETE("/v1/public/clubs/{clubSlug}/auth/session/push-token", { params: { path: { clubSlug } }, headers: bearer(secret) })),
+
+  /**
+   * Supprime l'accès de TOUTES les personnes de la session de ce club (204), la session
+   * est alors révoquée côté serveur. 401 : session déjà invalide. `call(null, …)` :
+   * un 401 ne passe volontairement PAS par le flux global « session invalide », qui
+   * entrerait en concurrence avec le nettoyage de la suppression.
+   */
+  deleteAccount: async (clubSlug: string, secret: string): Promise<DeleteAccountResult> => {
+    try {
+      await call(null, () => api().DELETE("/v1/public/clubs/{clubSlug}/auth/me", { params: { path: { clubSlug } }, headers: bearer(secret) }));
+      return { kind: "deleted" };
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      return error.status === 401 ? { kind: "session_invalid" } : { kind: "failed", error };
+    }
+  },
 };
