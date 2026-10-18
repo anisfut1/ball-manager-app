@@ -10,6 +10,7 @@ import { useActiveClub, useSession } from "@/auth/SessionProvider";
 import { AppText, Avatar, Badge, Banner, Button, Card, ListRow, Screen, SectionHeader, type BannerTone } from "@/components/ui";
 import { colors } from "@/design";
 import { env } from "@/config/env";
+import { DeleteAccountSection } from "@/features/account/DeleteAccountSection";
 import { ClubHeader } from "@/features/home/ClubHeader";
 import { useRoles } from "@/features/roles/useRoles";
 import { enablePush, pushPermission, type PushPermission } from "@/push/registration";
@@ -177,6 +178,9 @@ export default function ProfileScreen() {
       </Card>
 
       <Button label="Se déconnecter" variant="danger" onPress={confirmLogout} fullWidth />
+
+      <SectionHeader title="Compte" />
+      <DeleteAccountSection />
     </Screen>
   );
 }

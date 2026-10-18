@@ -1,5 +1,5 @@
 import { ApiError } from "@/api/errors";
-import type { DeviceMeta, DeviceSessionDto } from "@/api/endpoints/auth";
+import type { DeleteAccountResult, DeviceMeta, DeviceSessionDto } from "@/api/endpoints/auth";
 import type { Pkce } from "./pkce";
 import { parseSsoCallback, SSO_CALLBACK, SsoCancelled } from "./callback";
 import { withClub, withoutClub, withPeople, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
@@ -168,4 +168,35 @@ export async function removePerson(deps: AuthDeps, state: SessionState, clubSlug
   if (people.length === 0) return logout(deps, state, clubSlug);
   await deps.api.removePerson(clubSlug, session.secret, licencieId);
   return withPeople(state, clubSlug, people);
+}
+
+export interface DeleteAccountApi {
+  deleteAccount(clubSlug: string, secret: string): Promise<DeleteAccountResult>;
+}
+
+export interface DeleteAccountOutcome {
+  state: SessionState;
+  /** Clubs dont la suppression a échoué (réseau ou 5xx) : leur session est intacte. */
+  failed: { clubSlug: string; clubName: string }[];
+}
+
+/**
+ * Suppression du compte sur CHAQUE club de l'appareil, un club après l'autre (jamais en
+ * parallèle). 204 ou 401 : le club est retiré de l'état et `onClubRemoved` fait le
+ * nettoyage LOCAL (aucun appel serveur : la session est déjà révoquée côté serveur).
+ * Réseau ou 5xx : le club reste intact et la séquence continue avec les suivants.
+ */
+export async function deleteAccount(api: DeleteAccountApi, state: SessionState, onClubRemoved: (next: SessionState, clubSlug: string) => Promise<void>): Promise<DeleteAccountOutcome> {
+  let next = state;
+  const failed: DeleteAccountOutcome["failed"] = [];
+  for (const session of Object.values(state.clubs)) {
+    const result = await api.deleteAccount(session.clubSlug, session.secret);
+    if (result.kind === "failed") {
+      failed.push({ clubSlug: session.clubSlug, clubName: session.clubName });
+      continue;
+    }
+    next = withoutClub(next, session.clubSlug);
+    await onClubRemoved(next, session.clubSlug);
+  }
+  return { state: next, failed };
 }

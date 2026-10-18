@@ -6,10 +6,11 @@ import { authApi } from "@/api/endpoints/auth";
 import { setCredentialSource } from "@/api/credentials";
 import { env } from "@/config/env";
 import { clearPendingDestination } from "@/linking/pendingDestination";
-import { detachPush } from "@/push/registration";
+import { detachPush, forgetPushRegistration } from "@/push/registration";
 import * as service from "./auth-service";
 import { createPkce } from "./pkce";
-import { activeClub, activePerson, EMPTY_STATE, withActiveClub, withActivePerson, withoutClub, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
+import { activeClub, activePerson, EMPTY_STATE, hasClubs, withActiveClub, withActivePerson, withoutClub, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
+import { clearAccountDeletedNotice, markAccountDeleted } from "./account-deleted-notice";
 import { createSessionRepository } from "./session-repository";
 import type { SsoOutcome } from "./sso-outcome";
 import { isSignedIn, sessionReducer, type SessionStatus } from "./session-machine";
@@ -40,6 +41,8 @@ export interface SessionContextValue {
   loginWithCode(clubSlug: string, code: string): Promise<string | null>;
   ssoLogin(clubSlug: string, redirectPath?: string | null): Promise<SsoOutcome>;
   logout(clubSlug: string): Promise<void>;
+  /** Supprime le compte sur TOUS les clubs de l'appareil, un par un. Une seule séquence à la fois. */
+  deleteAccount(): Promise<service.DeleteAccountOutcome>;
   removePerson(clubSlug: string, licencieId: string): Promise<void>;
   setActivePerson(licencieId: string): Promise<void>;
   setActiveClub(clubSlug: string): Promise<void>;
@@ -59,6 +62,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Source de vérité synchrone pour les actions : chaque changement d'état passe
   // par `persist` (ou l'amorçage) AVANT le dispatch, le ref est donc toujours à jour.
   const stateRef = useRef<SessionState>(EMPTY_STATE);
+  const deletion = useRef<Promise<service.DeleteAccountOutcome> | null>(null);
 
   const persist = useCallback(async (next: SessionState) => {
     stateRef.current = next;
@@ -102,8 +106,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => setCredentialSource(null);
   }, [persist, queryClient]);
 
+  /** Partie LOCALE du retrait d'un club (aucun appel serveur) : trousseau, cache, destination en attente. */
+  const clearClubLocally = useCallback(
+    async (next: SessionState, clubSlug: string) => {
+      await persist(next);
+      queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(clubSlug) });
+      if (!hasClubs(next)) {
+        queryClient.clear();
+        clearPendingDestination();
+      }
+    },
+    [persist, queryClient],
+  );
+
   const signIn = useCallback(
     async (next: SessionState) => {
+      clearAccountDeletedNotice();
       await persist(next);
       dispatch({ type: "SIGNED_IN", state: next });
     },
@@ -137,13 +155,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       async logout(clubSlug) {
         // 1. jeton push détaché, 2. session révoquée, 3. trousseau, 4. cache, 5. destination en attente.
         const next = await service.logout(deps, stateRef.current, clubSlug, detachPush);
-        await persist(next);
-        queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(clubSlug) });
-        if (Object.keys(next.clubs).length === 0) {
-          queryClient.clear();
-          clearPendingDestination();
-        }
+        await clearClubLocally(next, clubSlug);
         dispatch({ type: "SIGNED_OUT", state: next });
+      },
+      deleteAccount() {
+        // Double appui : la séquence en cours est renvoyée, jamais relancée.
+        if (deletion.current) return deletion.current;
+        const run = (async () => {
+          const outcome = await service.deleteAccount(authApi, stateRef.current, async (next, clubSlug) => {
+            forgetPushRegistration(clubSlug);
+            await clearClubLocally(next, clubSlug);
+          });
+          if (outcome.failed.length === 0) markAccountDeleted();
+          dispatch({ type: "SIGNED_OUT", state: outcome.state });
+          return outcome;
+        })().finally(() => {
+          deletion.current = null;
+        });
+        deletion.current = run;
+        return run;
       },
       async removePerson(clubSlug, licencieId) {
         const next = await service.removePerson(deps, stateRef.current, clubSlug, licencieId);
@@ -165,7 +195,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "UPDATED", state: next });
       },
     };
-  }, [machine, persist, queryClient, refresh, signIn]);
+  }, [machine, clearClubLocally, persist, queryClient, refresh, signIn]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
