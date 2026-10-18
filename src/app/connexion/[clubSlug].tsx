@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -23,6 +23,11 @@ export default function ClubLoginScreen() {
   const club = useQuery({ queryKey: queryKeys.club(clubSlug), queryFn: () => authApi.club(clubSlug), enabled: !!clubSlug });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { refusalRedirect, acknowledgeRedirect } = session;
+  // L'identification du club refusé est à l'écran : plus de renvoi automatique.
+  useEffect(() => {
+    if (refusalRedirect && refusalRedirect === clubSlug) acknowledgeRedirect();
+  }, [refusalRedirect, clubSlug, acknowledgeRedirect]);
   const pending = peekPendingDestination();
   const name = club.data?.name ?? clubSlug;
 

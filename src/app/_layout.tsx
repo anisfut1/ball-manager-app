@@ -8,6 +8,8 @@ import { bindAppFocus, createQueryClient } from "@/api/queryClient";
 import { SessionProvider, useSession } from "@/auth/SessionProvider";
 import { ClubThemeProvider } from "@/design/ClubTheme";
 import { colors } from "@/design";
+import { RefusedClubNotices } from "@/navigation/RefusedClubNotices";
+import { RefusedSessionRedirect } from "@/navigation/RefusedSessionRedirect";
 import { PushBridge } from "@/push/PushBridge";
 
 // Splash maintenu pendant la lecture du trousseau : pas de flash connexion → accueil.
@@ -23,6 +25,8 @@ function ThemedApp() {
     <ClubThemeProvider accentColor={club?.accentColor}>
       <StatusBar style="dark" />
       <PushBridge />
+      <RefusedSessionRedirect />
+      <RefusedClubNotices />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
     </ClubThemeProvider>
   );

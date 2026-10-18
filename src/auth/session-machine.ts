@@ -13,18 +13,41 @@ export type SessionStatus = "BOOTING" | "UNAUTHENTICATED" | "AUTHENTICATED" | "R
 export interface SessionMachine {
   status: SessionStatus;
   state: SessionState;
+  /** Club ACTIF dont la session vient d'être refusée : l'app renvoie une fois vers son identification. */
+  redirect?: string | null;
 }
 
 export type SessionEvent =
   | { type: "BOOTED"; state: SessionState }
   | { type: "REFRESH_STARTED" }
-  | { type: "REFRESHED"; state: SessionState; expiredClubs: string[] }
+  | { type: "REFRESHED"; state: SessionState; expiredClubs: string[]; redirectTo?: string }
   | { type: "SIGNED_IN"; state: SessionState }
   | { type: "UPDATED"; state: SessionState }
   | { type: "SIGNED_OUT"; state: SessionState }
-  | { type: "SESSION_INVALID"; state: SessionState };
+  | { type: "SESSION_INVALID"; state: SessionState; redirectTo?: string }
+  /** L'identification du club refusé est à l'écran : plus de renvoi. */
+  | { type: "REDIRECT_DONE" };
 
 export function sessionReducer(current: SessionMachine, event: SessionEvent): SessionMachine {
+  const next = transition(current, event);
+  return { ...next, redirect: redirectAfter(current.redirect ?? null, event) };
+}
+
+/** Club actif à renvoyer vers son identification : posé par son refus, effacé quand l'écran est ouvert ou la personne reconnectée. */
+function redirectAfter(redirect: string | null, event: SessionEvent): string | null {
+  switch (event.type) {
+    case "REFRESHED":
+    case "SESSION_INVALID":
+      return event.redirectTo ?? redirect;
+    case "SIGNED_IN":
+    case "REDIRECT_DONE":
+      return null;
+    default:
+      return redirect;
+  }
+}
+
+function transition(current: SessionMachine, event: SessionEvent): SessionMachine {
   switch (event.type) {
     case "BOOTED":
       return { status: hasClubs(event.state) ? "AUTHENTICATED" : "UNAUTHENTICATED", state: event.state };
@@ -40,6 +63,8 @@ export function sessionReducer(current: SessionMachine, event: SessionEvent): Se
       return { status: hasClubs(event.state) ? "AUTHENTICATED" : "UNAUTHENTICATED", state: event.state };
     case "SESSION_INVALID":
       return { status: hasClubs(event.state) ? "AUTHENTICATED" : "EXPIRED", state: event.state };
+    case "REDIRECT_DONE":
+      return current;
   }
 }
 
