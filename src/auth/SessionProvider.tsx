@@ -11,12 +11,14 @@ import * as service from "./auth-service";
 import { createPkce } from "./pkce";
 import { activeClub, activePerson, EMPTY_STATE, hasClubs, withActiveClub, withActivePerson, withoutClub, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
 import { clearAccountDeletedNotice, markAccountDeleted } from "./account-deleted-notice";
+import { createRefusedClubsRepository, NO_REFUSAL, refusalReducer, type RefusedClub } from "./refused-clubs";
 import { createSessionRepository } from "./session-repository";
 import type { SsoOutcome } from "./sso-outcome";
 import { isSignedIn, sessionReducer, type SessionStatus } from "./session-machine";
 import { secureStorage } from "./secure-storage";
 
 const repository = createSessionRepository(secureStorage);
+const refusedRepository = createRefusedClubsRepository(secureStorage);
 
 const deps: service.AuthDeps = {
   api: authApi,
@@ -37,6 +39,10 @@ export interface SessionContextValue {
   state: SessionState;
   club: ClubSession | null;
   person: SessionPerson | null;
+  /** Clubs dont la session a été refusée par le back, jusqu'à nouvelle identification ou fermeture de l'avis (persistés). */
+  refusedClubs: RefusedClub[];
+  /** Ferme l'avis d'un club refusé. */
+  dismissRefusal(clubSlug: string): void;
   /** Club dont la session vient d'être refusée par le back (null : aucun, ou déjà présenté). */
   refusedClub: string | null;
   /** L'identification du club refusé est à l'écran : il ne faut plus y renvoyer. */
@@ -66,6 +72,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Source de vérité synchrone pour les actions : chaque changement d'état passe
   // par `persist` (ou l'amorçage) AVANT le dispatch, le ref est donc toujours à jour.
   const stateRef = useRef<SessionState>(EMPTY_STATE);
+  const [refusal, dispatchRefusal] = useReducer(refusalReducer, NO_REFUSAL);
+  // La liste n'est écrite qu'une fois relue (sinon le démarrage écraserait la liste persistée).
+  const refusalLoaded = useRef(false);
   const deletion = useRef<Promise<service.DeleteAccountOutcome> | null>(null);
 
   const persist = useCallback(async (next: SessionState) => {
@@ -75,7 +84,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     dispatch({ type: "REFRESH_STARTED" });
-    const { state, expiredClubs } = await service.refreshAll(deps, stateRef.current);
+    const before = stateRef.current;
+    const { state, expiredClubs } = await service.refreshAll(deps, before);
+    if (expiredClubs.length > 0) dispatchRefusal({ type: "REFUSED", clubs: expiredClubs.map((clubSlug) => ({ clubSlug, clubName: before.clubs[clubSlug]?.clubName ?? clubSlug })) });
     await persist(state);
     for (const slug of expiredClubs) queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(slug) });
     dispatch({ type: "REFRESHED", state, expiredClubs });
@@ -85,8 +96,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let alive = true;
     void (async () => {
       const state = await repository.load();
+      const refused = await refusedRepository.load();
       if (!alive) return;
       stateRef.current = state;
+      refusalLoaded.current = true;
+      dispatchRefusal({ type: "LOADED", clubs: refused });
       dispatch({ type: "BOOTED", state });
       if (Object.keys(state.clubs).length > 0) await refresh();
     })();
@@ -95,12 +109,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    if (refusalLoaded.current) void refusedRepository.save(refusal.clubs).catch(() => undefined);
+  }, [refusal.clubs]);
+
   // Le client API lit le secret ici ; un 401 « session invalide » retire le club.
   useEffect(() => {
     setCredentialSource({
       secretFor: (slug) => stateRef.current.clubs[slug]?.secret ?? null,
       onSessionInvalid: (slug) => {
-        if (!stateRef.current.clubs[slug]) return;
+        const refused = stateRef.current.clubs[slug];
+        if (!refused) return;
+        dispatchRefusal({ type: "REFUSED", clubs: [{ clubSlug: slug, clubName: refused.clubName }] });
         const next = withoutClub(stateRef.current, slug);
         void persist(next);
         queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(slug) });
@@ -124,8 +144,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const signIn = useCallback(
-    async (next: SessionState) => {
+    async (next: SessionState, clubSlug: string) => {
       clearAccountDeletedNotice();
+      dispatchRefusal({ type: "SIGNED_IN", clubSlug });
       await persist(next);
       dispatch({ type: "SIGNED_IN", state: next });
     },
@@ -140,22 +161,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       state: machine.state,
       club,
       person: club ? activePerson(club) : null,
+      refusedClubs: refusal.clubs,
+      dismissRefusal: (clubSlug) => dispatchRefusal({ type: "DISMISSED", clubSlug }),
       refusedClub: machine.refused ?? null,
       acknowledgeRefusal: () => dispatch({ type: "REFUSAL_ACKNOWLEDGED" }),
       refresh,
       async bootstrapFromToken(clubSlug, token) {
-        await signIn(await service.bootstrapFromToken(deps, stateRef.current, clubSlug, token));
+        await signIn(await service.bootstrapFromToken(deps, stateRef.current, clubSlug, token), clubSlug);
       },
       async loginWithCode(clubSlug, code) {
         const result = await service.loginWithCode(deps, stateRef.current, clubSlug, code);
-        await signIn(result.state);
+        await signIn(result.state, clubSlug);
         return result.redirectPath;
       },
       async ssoLogin(clubSlug, redirectPath) {
         const result = await service.ssoLogin(deps, stateRef.current, clubSlug, redirectPath);
         // Relayé par un lien (feuille fermée) : la session est déjà établie par /lien ou /code.
         if (result.kind === "superseded") return { kind: "superseded" };
-        await signIn(result.state);
+        await signIn(result.state, clubSlug);
         return { kind: "signed-in", redirectPath: result.redirectPath };
       },
       async logout(clubSlug) {
@@ -201,7 +224,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "UPDATED", state: next });
       },
     };
-  }, [machine, clearClubLocally, persist, queryClient, refresh, signIn]);
+  }, [machine, refusal.clubs, clearClubLocally, persist, queryClient, refresh, signIn]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
