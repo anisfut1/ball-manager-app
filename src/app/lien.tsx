@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { humanMessage } from "@/api/errors";
 import { useSession } from "@/auth/SessionProvider";
 import { AppText, Banner, Button, CardSkeletons, Screen } from "@/components/ui";
-import { setPendingDestination } from "@/linking/pendingDestination";
+import { mergeLinkDestination, peekPendingDestination, setPendingDestination } from "@/linking/pendingDestination";
 import { destinationAfterLogin } from "@/navigation/after-login";
 
 /**
@@ -17,7 +17,7 @@ export default function PersonalLinkScreen() {
 
   useEffect(() => {
     let alive = true;
-    if (next.startsWith(`/c/${club}`)) setPendingDestination({ clubSlug: club, route: next });
+    if (next.startsWith(`/c/${club}`)) setPendingDestination(mergeLinkDestination(peekPendingDestination(), { clubSlug: club, route: next }));
     bootstrapFromToken(club, token)
       .then(() => alive && router.replace(destinationAfterLogin(club, null)))
       .catch((e: unknown) => alive && setError(humanMessage(e)));

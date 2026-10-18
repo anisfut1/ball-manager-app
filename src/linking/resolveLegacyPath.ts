@@ -44,7 +44,7 @@ function publicRoute(slug: string, segments: string[], url: NormalizedUrl): AppR
         const section = hash === "convocation" ? "convocation" : hash === "vie-equipe" ? "coach" : null;
         return section ? `${club(slug)}/matchs/${id}?section=${section}` : `${club(slug)}/matchs/${id}`;
       }
-      return `${club(slug)}/planning`;
+      return `${club(slug)}/${section}`;
     case "entrainements": {
       const seance = url.query.get("seance");
       if (seance && ID.test(seance)) return `${club(slug)}/entrainements/${seance}`;
