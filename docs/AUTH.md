@@ -32,6 +32,13 @@ Quand l'une de ces deux connexions **aboutit** alors que la feuille est ouverte,
 
 Destination d'origine mémorisée → authentification → vérification d'accès → écran exact (jamais l'accueil systématique). Voir `src/navigation/after-login.ts`.
 
-## Comptes et suppression
+## Suppression du compte (guideline Apple 5.1.1(v))
 
-L'app ne crée aucun compte (accès via un lien émis par le club) : la règle Apple de suppression de compte in-app ne s'applique pas ; « Se déconnecter » révoque la session et le jeton push. Pas de Sign in with Apple ni de login social (SSO Ball Manager + lien).
+Profil → *Compte* → **Supprimer mon compte** → confirmation → **Supprimer définitivement**. `DELETE /v1/public/clubs/{clubSlug}/auth/me` (session `bmd_…`) est appelée **une fois par club de l'appareil, séquentiellement**, avec le secret de chaque club (`deleteAccount` dans `src/auth/auth-service.ts`, orchestré par `SessionProvider.deleteAccount`). Une seule séquence à la fois (un double appui ne la relance pas).
+
+- `204` ou `401` : nettoyage **local** du club, sans aucun appel serveur (la session est déjà révoquée) : Keychain, cache React Query, destination en attente (si dernier club), état push local.
+- Réseau ou `5xx` : le club reste intact. L'utilisateur reste dans l'app, le message nomme les clubs concernés ; un nouvel essai ne vise que les clubs restants.
+- Tous supprimés : retour à l'accueil non connecté, message « Ton compte a été supprimé. » (`src/auth/account-deleted-notice.ts`).
+- Le `401` de cette route ne passe **pas** par le flux global « session invalide » (`call(null, …)`) : pas de double navigation ni d'écran « session expirée ».
+
+La fiche sportive reste au club. Ne jamais supprimer le licencié du compte de revue Apple pendant les tests. Pas de Sign in with Apple ni de login social (SSO Ball Manager + lien).

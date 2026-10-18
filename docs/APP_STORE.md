@@ -74,7 +74,14 @@ Cocher « Connexion requise », laisser identifiant / mot de passe vides, et col
 
 ## Suppression de compte (5.1.1(v))
 
-**Non applicable** : aucune création de compte, pas de Sign in with Apple ni de login social. « Se déconnecter » révoque la session et le jeton push ; la suppression de données passe par le club (page Confidentialité). **À réauditer** si un jour l'app crée des comptes.
+**Implémentée dans l'app, sans écrire au support.** L'app ne crée pas de compte (accès par un lien émis par le club), mais l'accès est supprimable :
+
+- **Où** : onglet *Plus* → *Profil* → tout en bas, section *Compte*, bouton **Supprimer mon compte** (style destructif).
+- **Confirmation** : une feuille liste chaque club de l'appareil avec les prénoms de ses profils, ce qui est supprimé, ce qui est conservé, et prévient que l'accès d'un autre parent aux mêmes enfants sera aussi coupé. Rien n'est envoyé avant l'appui sur **Supprimer définitivement**.
+- **Supprimé** : l'accès du licencié (tous appareils et web), son e-mail, son téléphone, sa photo et ses rôles ; les jetons push.
+- **Conservé** : la fiche sportive gérée par le club (nom, numéro de licence, équipe) pour les feuilles de match et les historiques.
+- **Route** : `DELETE /v1/public/clubs/{clubSlug}/auth/me` avec `Authorization: Bearer <session bmd_…>`, **une fois par club, l'un après l'autre**. `204` ou `401` : le club est effacé de l'appareil. Réseau ou `5xx` : le club reste connecté, un message nomme les clubs non supprimés et propose de réessayer. Quand tout est supprimé : retour à l'accueil avec « Ton compte a été supprimé. ».
+- ⚠️ **Ne jamais supprimer le licencié du compte de revue Apple pendant les tests** : la suppression est réelle et définitive. Tester avec un autre licencié du club `club-demo` (par exemple Noah EXEMPLE).
 
 ## Confidentialité
 
