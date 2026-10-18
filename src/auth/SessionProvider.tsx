@@ -37,6 +37,10 @@ export interface SessionContextValue {
   state: SessionState;
   club: ClubSession | null;
   person: SessionPerson | null;
+  /** Club dont la session vient d'être refusée par le back (null : aucun, ou déjà présenté). */
+  refusedClub: string | null;
+  /** L'identification du club refusé est à l'écran : il ne faut plus y renvoyer. */
+  acknowledgeRefusal(): void;
   bootstrapFromToken(clubSlug: string, token: string): Promise<void>;
   loginWithCode(clubSlug: string, code: string): Promise<string | null>;
   ssoLogin(clubSlug: string, redirectPath?: string | null): Promise<SsoOutcome>;
@@ -100,7 +104,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const next = withoutClub(stateRef.current, slug);
         void persist(next);
         queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(slug) });
-        dispatch({ type: "SESSION_INVALID", state: next });
+        dispatch({ type: "SESSION_INVALID", state: next, clubSlug: slug });
       },
     });
     return () => setCredentialSource(null);
@@ -136,6 +140,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       state: machine.state,
       club,
       person: club ? activePerson(club) : null,
+      refusedClub: machine.refused ?? null,
+      acknowledgeRefusal: () => dispatch({ type: "REFUSAL_ACKNOWLEDGED" }),
       refresh,
       async bootstrapFromToken(clubSlug, token) {
         await signIn(await service.bootstrapFromToken(deps, stateRef.current, clubSlug, token));

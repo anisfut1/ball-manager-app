@@ -13,6 +13,8 @@ export type SessionStatus = "BOOTING" | "UNAUTHENTICATED" | "AUTHENTICATED" | "R
 export interface SessionMachine {
   status: SessionStatus;
   state: SessionState;
+  /** Club dont la session vient d'être refusée par le back : l'app y renvoie vers son identification. */
+  refused?: string | null;
 }
 
 export type SessionEvent =
@@ -22,9 +24,32 @@ export type SessionEvent =
   | { type: "SIGNED_IN"; state: SessionState }
   | { type: "UPDATED"; state: SessionState }
   | { type: "SIGNED_OUT"; state: SessionState }
-  | { type: "SESSION_INVALID"; state: SessionState };
+  | { type: "SESSION_INVALID"; state: SessionState; clubSlug?: string }
+  /** Le club refusé a été présenté à l'utilisateur (écran d'identification ouvert). */
+  | { type: "REFUSAL_ACKNOWLEDGED" };
 
 export function sessionReducer(current: SessionMachine, event: SessionEvent): SessionMachine {
+  const next = transition(current, event);
+  return { ...next, refused: refusedAfter(current.refused ?? null, event) };
+}
+
+/** Club à renvoyer vers son identification : posé par un refus, effacé quand il a été présenté ou que la personne s'est reconnectée. */
+function refusedAfter(refused: string | null, event: SessionEvent): string | null {
+  switch (event.type) {
+    case "REFRESHED":
+      return event.expiredClubs[0] ?? refused;
+    case "SESSION_INVALID":
+      return event.clubSlug ?? refused;
+    case "SIGNED_IN":
+      return null;
+    case "REFUSAL_ACKNOWLEDGED":
+      return null;
+    default:
+      return refused;
+  }
+}
+
+function transition(current: SessionMachine, event: SessionEvent): SessionMachine {
   switch (event.type) {
     case "BOOTED":
       return { status: hasClubs(event.state) ? "AUTHENTICATED" : "UNAUTHENTICATED", state: event.state };
@@ -40,6 +65,8 @@ export function sessionReducer(current: SessionMachine, event: SessionEvent): Se
       return { status: hasClubs(event.state) ? "AUTHENTICATED" : "UNAUTHENTICATED", state: event.state };
     case "SESSION_INVALID":
       return { status: hasClubs(event.state) ? "AUTHENTICATED" : "EXPIRED", state: event.state };
+    case "REFUSAL_ACKNOWLEDGED":
+      return current;
   }
 }
 
