@@ -9,6 +9,7 @@ import { authApi } from "@/api/endpoints/auth";
 import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { AppText, CardSkeletons, ErrorState, Screen, TextField } from "@/components/ui";
+import { AccountDeletedBanner } from "@/features/account/AccountDeletedBanner";
 import { ClubBadge } from "@/features/onboarding/ClubBadge";
 import { colors, radius, shadows, spacing } from "@/design";
 import { FALLBACK_ACCENT } from "@/design/accent";
@@ -62,6 +63,7 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.section}>
+        <AccountDeletedBanner />
         <AppText variant="title" accessibilityRole="header">
           Choisis ton club
         </AppText>

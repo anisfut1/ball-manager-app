@@ -61,9 +61,14 @@ export async function refreshPushRegistration(sessions: ClubSession[]): Promise<
   if (token && typeof token.data === "string") await registerToken(sessions, token.data);
 }
 
+/** État local seulement (aucun appel réseau) : le jeton de ce club n'est plus considéré comme enregistré. */
+export function forgetPushRegistration(clubSlug: string): void {
+  registered.delete(clubSlug);
+}
+
 /** Plus de notifications de ce club sur cet appareil (déconnexion, ou choix dans le profil). */
 export async function detachPush(session: ClubSession): Promise<void> {
-  registered.delete(session.clubSlug);
+  forgetPushRegistration(session.clubSlug);
   await authApi.removePushToken(session.clubSlug, session.secret).catch(() => undefined);
 }
 
