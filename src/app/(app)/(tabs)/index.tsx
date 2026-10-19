@@ -13,7 +13,7 @@ import { colors, radius, shadows, spacing } from "@/design";
 import { useClubAccent } from "@/design/ClubTheme";
 import { ActionItem } from "@/features/home/ActionCards";
 import { ClubHeader } from "@/features/home/ClubHeader";
-import { IdentifyFlow } from "@/features/identify/IdentifyFlow";
+import { LicensedSearchCard } from "@/features/licensed-access/LicensedSearchCard";
 import { PushInvite } from "@/features/home/PushInvite";
 import { actionKey, isPending, sortActions } from "@/features/home/action-center-model";
 import { buildAgenda, type AgendaItem } from "@/features/home/agenda";
@@ -168,7 +168,7 @@ export default function HomeScreen() {
         <AppText variant="callout" tone="muted">
           Un parent avec plusieurs enfants au club : retrouve le nom de l&apos;autre enfant et ouvre son lien sur ce téléphone. Les entraînements de chacun s&apos;afficheront ensemble ici.
         </AppText>
-        <IdentifyFlow clubSlug={club.slug} />
+        <LicensedSearchCard clubSlug={club.slug} variant="bare" />
       </Sheet>
       {center.data?.invalidTokenIndexes.length ? (
         <AppText variant="meta" tone="subtle">
