@@ -1,46 +1,29 @@
 import { useEffect } from "react";
-import { router, Stack, useLocalSearchParams, usePathname } from "expo-router";
-import { useSession } from "@/auth/SessionProvider";
-import { AppText, Button, Card, Screen } from "@/components/ui";
-import { setPendingDestination } from "@/linking/pendingDestination";
+import { Stack, useLocalSearchParams, usePathname } from "expo-router";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
 import { colors } from "@/design";
+import { LicensedGateScreen } from "@/features/licensed-access/LicensedGateScreen";
+import { moduleForRoute } from "@/features/licensed-access/modules";
+import { isPublicClubRoute } from "@/navigation/public-routes";
 
 /**
- * Lien vers un club : membre → bascule automatique sur ce club ; sinon
- * « Accès refusé » avec la possibilité de se connecter à ce club (la
- * destination est conservée).
+ * Lien vers un club (`/c/{club}/…`) : ce club devient le club affiché et
+ * mémorisé. Pages publiques (résultats, matchs, fiche match, classement des
+ * tables, fiche joueur) : ouvertes sans connexion. Pages réservées : la
+ * porte « Accès réservé aux licenciés » tant que personne n'est reconnu
+ * pour ce club (la destination est retrouvée après l'identification).
  */
 export default function ClubGateLayout() {
   const { clubSlug = "" } = useLocalSearchParams<{ clubSlug: string }>();
   const pathname = usePathname();
-  const { state, setActiveClub } = useSession();
-  const member = !!state.clubs[clubSlug];
+  const { club, session, switching, chooseClub } = useCurrentClubState();
+  const current = club?.slug === clubSlug;
 
   useEffect(() => {
-    if (member && state.active !== clubSlug) void setActiveClub(clubSlug);
-  }, [member, clubSlug, state.active, setActiveClub]);
+    if (clubSlug && !current) chooseClub({ slug: clubSlug });
+  }, [clubSlug, current, chooseClub]);
 
-  if (!member) {
-    return (
-      <Screen>
-        <Card>
-          <AppText variant="headline">Accès réservé</AppText>
-          <AppText variant="callout" tone="muted">
-            Ce lien concerne un club auquel cet iPhone n&apos;est pas connecté.
-          </AppText>
-          <Button
-            label="Se connecter à ce club"
-            onPress={() => {
-              setPendingDestination({ clubSlug, route: pathname });
-              router.replace(`/connexion/${clubSlug}`);
-            }}
-            fullWidth
-          />
-          <Button label="Retour à l'accueil" variant="ghost" onPress={() => router.replace("/")} />
-        </Card>
-      </Screen>
-    );
-  }
-  if (state.active !== clubSlug) return null;
+  if (!current || switching) return null;
+  if (!session && !isPublicClubRoute(pathname)) return <LicensedGateScreen module={moduleForRoute(pathname)} stacked />;
   return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />;
 }

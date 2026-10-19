@@ -1,5 +1,6 @@
 import { Redirect, Stack, useGlobalSearchParams, usePathname } from "expo-router";
 import { useSession } from "@/auth/SessionProvider";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
 import { authGuard } from "@/navigation/auth-guard";
 import { setPendingDestination } from "@/linking/pendingDestination";
 import { colors } from "@/design";
@@ -7,9 +8,10 @@ import { colors } from "@/design";
 /** Garde d'authentification : voir `authGuard`. */
 export default function AppLayout() {
   const { signedIn, status, refusalRedirect } = useSession();
+  const { club } = useCurrentClubState();
   const pathname = usePathname();
   const params = useGlobalSearchParams<Record<string, string>>();
-  const decision = authGuard({ signedIn, status, pathname, params, refusalRedirect });
+  const decision = authGuard({ signedIn, status, pathname, params, refusalRedirect, browsingClub: club?.slug ?? null });
   if (decision) {
     if (decision.pending) setPendingDestination(decision.pending);
     return <Redirect href={decision.redirect} />;

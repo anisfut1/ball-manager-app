@@ -13,7 +13,7 @@ export default function PlanningScreen() {
   const queryClient = useQueryClient();
   return (
     <Screen refreshing={false} onRefresh={() => void queryClient.invalidateQueries({ queryKey: queryKeys.planningAll(club.clubSlug) })}>
-      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Plus", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Retour", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
       <ClubHeader title="Planning" />
       <AppText variant="callout" tone="muted">
         Matchs et entraînements de tes équipes, semaine par semaine.

@@ -23,6 +23,11 @@ import { useDerogationActor } from "@/features/derogations/useDerogationActor";
  * Le serveur revérifie chaque droit (403 sinon).
  */
 export default function DerogationsScreen() {
+  return <DerogationsView />;
+}
+
+/** `tab` : onglet de la barre du bas (en-tête du club), sinon écran empilé. */
+export function DerogationsView({ tab = false }: { tab?: boolean }) {
   const club = useActiveClub();
   const { as, hasAccess, official, loading } = useDerogationActor();
   const queryClient = useQueryClient();
@@ -34,7 +39,8 @@ export default function DerogationsScreen() {
 
   return (
     <Screen refreshing={false} onRefresh={refresh}>
-      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Plus", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
+      {tab ? null : <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Retour", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />}
+      <ClubHeader title="Dérogations" />
       {loading ? <CardSkeletons count={3} /> : !hasAccess || !as ? <Restricted /> : <Requests as={as} />}
       {official ? <OfficialSection as={official} /> : null}
     </Screen>
@@ -80,7 +86,6 @@ function Requests({ as }: { as: string }) {
 
   return (
     <View style={styles.page}>
-      <ClubHeader title="Dérogations" />
       <AppText variant="callout" tone="muted">
         {manager ? "Les demandes de changement de date envoyées par les coachs. Tu t'occupes des démarches officielles, la conversation garde la trace de tout." : "Demande au coordinateur de déplacer un match, puis suis sa réponse ici."}
       </AppText>

@@ -9,6 +9,7 @@ import { authApi } from "@/api/endpoints/auth";
 import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { AppText, CardSkeletons, ErrorState, Screen, TextField } from "@/components/ui";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
 import { AccountDeletedBanner } from "@/features/account/AccountDeletedBanner";
 import { ClubBadge } from "@/features/onboarding/ClubBadge";
 import { colors, radius, shadows, spacing } from "@/design";
@@ -24,9 +25,22 @@ const FEATURES: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
 /** Au-delà, la liste des clubs se filtre par recherche. */
 const SEARCH_FROM = 7;
 
-/** Bienvenue : une app pour tous les clubs Ball Manager. On choisit son club, puis on se retrouve par son nom. */
+type ClubListItem = Awaited<ReturnType<typeof authApi.listClubs>>["clubs"][number];
+
+/**
+ * Bienvenue : une app pour tous les clubs Ball Manager. On choisit son club
+ * une fois ; son espace s'ouvre sans connexion (matchs, résultats), et on se
+ * retrouve par son nom depuis les onglets réservés aux licenciés.
+ */
 export default function WelcomeScreen() {
   const clubs = useQuery({ queryKey: queryKeys.clubs, queryFn: authApi.listClubs });
+  const { chooseClub } = useCurrentClubState();
+  // Le club choisi est mémorisé : les prochains lancements l'ouvrent directement (comme /public/{club}).
+  const open = (c: ClubListItem) => {
+    chooseClub({ slug: c.slug, name: c.name, logoUrl: c.logoUrl });
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  };
   const [q, setQ] = useState("");
   const all = useMemo(() => clubs.data?.clubs ?? [], [clubs.data]);
   const filtered = useMemo(() => {
@@ -75,8 +89,8 @@ export default function WelcomeScreen() {
             key={c.slug}
             accessibilityRole="button"
             accessibilityLabel={c.name}
-            accessibilityHint="Se connecter à ce club"
-            onPress={() => router.push(`/connexion/${c.slug}`)}
+            accessibilityHint="Ouvrir l'espace de ce club"
+            onPress={() => open(c)}
             style={({ pressed }) => [styles.clubCard, pressed && styles.pressed]}
           >
             <ClubBadge name={c.name} logoUrl={c.logoUrl} size={52} />
@@ -85,7 +99,7 @@ export default function WelcomeScreen() {
                 {c.name}
               </AppText>
               <AppText variant="meta" tone="muted">
-                Retrouve ton nom pour te connecter
+                Matchs, résultats et ton espace licencié
               </AppText>
             </View>
             <View style={styles.go}>
@@ -101,7 +115,7 @@ export default function WelcomeScreen() {
         <View style={styles.footer}>
           <Ionicons name="lock-closed-outline" size={14} color={colors.subtle} />
           <AppText variant="meta" tone="subtle" style={styles.footerText}>
-            Pas de compte ni de mot de passe : ton club t&apos;identifie, et seules tes informations s&apos;affichent.
+            Matchs et résultats ouverts à tous. Pour ton espace, pas de compte ni de mot de passe : ton club t&apos;identifie.
           </AppText>
         </View>
       </View>

@@ -1,4 +1,5 @@
 import { authGuard } from "./auth-guard";
+import { isPublicClubRoute } from "./public-routes";
 import { destinationAfterLogin } from "./after-login";
 import { internalPathFor, resolveDestination } from "@/linking/resolveDestination";
 import { clearPendingDestination, mergeLinkDestination, peekPendingDestination, setPendingDestination } from "@/linking/pendingDestination";
@@ -46,30 +47,34 @@ describe("lien profond Résultats / Matchs — résolution", () => {
 });
 
 describe("lien profond — de l'identification à la destination", () => {
-  it("sans session pour le club : mise de côté puis identification de CE club", () => {
-    const decision = authGuard({ ...SIGNED_OUT, pathname: openLink(`${W}/public/club-alpha/resultats`)! });
-    expect(decision).toEqual({ redirect: "/connexion/club-alpha", pending: { clubSlug: "club-alpha", route: "/c/club-alpha/resultats" } });
+  it("Résultats et Matchs : ouverts sans connexion, comme /public sur le web", () => {
+    expect(authGuard({ ...SIGNED_OUT, pathname: openLink(`${W}/public/club-alpha/resultats`)! })).toBeNull();
+    expect(authGuard({ ...SIGNED_OUT, pathname: openLink(`${W}/public/club-alpha/matchs`)! })).toBeNull();
+    expect(isPublicClubRoute("/c/club-alpha/resultats")).toBe(true);
+    expect(isPublicClubRoute("/c/club-alpha/matchs/m1")).toBe(true);
+    expect(isPublicClubRoute("/c/club-alpha/tables/classement")).toBe(true);
+    expect(isPublicClubRoute("/c/club-alpha/joueurs/l1")).toBe(true);
   });
 
-  it("Matchs : même chose", () => {
-    const decision = authGuard({ ...SIGNED_OUT, pathname: openLink(`${W}/public/club-alpha/matchs`)! });
-    expect(decision).toEqual({ redirect: "/connexion/club-alpha", pending: { clubSlug: "club-alpha", route: "/c/club-alpha/matchs" } });
+  it("page réservée : pas de renvoi, la porte « Accès réservé » s'affiche dans la page", () => {
+    expect(authGuard({ ...SIGNED_OUT, pathname: "/c/club-alpha/derogations" })).toBeNull();
+    expect(isPublicClubRoute("/c/club-alpha/derogations")).toBe(false);
+    expect(isPublicClubRoute("/c/club-alpha/tables")).toBe(false);
+    expect(isPublicClubRoute("/c/club-alpha/matchs/m1/convocation")).toBe(false);
   });
 
-  it("après identification par le lien reçu par email : Résultats, pas la page d'atterrissage du lien", () => {
-    const decision = authGuard({ ...SIGNED_OUT, pathname: openLink(`${W}/public/club-alpha/resultats`)! });
-    setPendingDestination(decision!.pending);
-    // L'email ramène sur la page par défaut du back (Tables) : `/lien` retient la destination.
+  it("pages personnelles hors club (planning, profil) : identification du club affiché", () => {
+    expect(authGuard({ ...SIGNED_OUT, pathname: "/planning", browsingClub: "club-alpha" })).toEqual({ redirect: "/connexion/club-alpha", pending: { clubSlug: "club-alpha", route: "/planning" } });
+    expect(authGuard({ ...SIGNED_OUT, pathname: "/", browsingClub: "club-alpha" })).toBeNull();
+    expect(authGuard({ ...SIGNED_OUT, pathname: "/" })?.redirect).toBe("/bienvenue");
+  });
+
+  it("après identification par le lien reçu par email : la page réservée demandée, pas la page d'atterrissage du lien", () => {
+    // Mise de côté par la porte de la page réservée.
+    setPendingDestination({ clubSlug: "club-alpha", route: "/c/club-alpha/derogations" });
     const landing = { clubSlug: "club-alpha", route: "/c/club-alpha/tables" };
     setPendingDestination(mergeLinkDestination(peekPendingDestination(), landing));
-    expect(destinationAfterLogin("club-alpha", null)).toBe("/c/club-alpha/resultats");
-  });
-
-  it("après identification par le lien reçu par email : Matchs", () => {
-    const decision = authGuard({ ...SIGNED_OUT, pathname: openLink(`${W}/public/club-alpha/matchs`)! });
-    setPendingDestination(decision!.pending);
-    setPendingDestination(mergeLinkDestination(peekPendingDestination(), { clubSlug: "club-alpha", route: "/c/club-alpha" }));
-    expect(destinationAfterLogin("club-alpha", null)).toBe("/c/club-alpha/matchs");
+    expect(destinationAfterLogin("club-alpha", null)).toBe("/c/club-alpha/derogations");
   });
 
   it("un lien précis (convocation) ouvert ensuite l'emporte sur une destination restée en attente", () => {

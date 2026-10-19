@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { clubSpaceApi } from "@/api/endpoints/clubSpace";
@@ -17,7 +17,7 @@ import { StandingsTable } from "@/features/results/StandingsTable";
 import { buildResultGroups, clubStandingRow, ordinal, recordLabel, type ResultGroup } from "@/features/results/result-groups";
 import { currentSeasonStart } from "@/lib/season";
 
-/** Résultats, comme la page Résultats du web : scores de la saison et classements FFBB, équipe par équipe. */
+/** Onglet « Résultats » (public), comme la page Résultats du web : scores de la saison et classements FFBB, équipe par équipe. */
 export default function ResultsScreen() {
   const club = useClubInfo();
   const [selected, setSelected] = useState<string | null>(null);
@@ -33,8 +33,7 @@ export default function ResultsScreen() {
   const group = selected ? (groups.find((g) => g.key === selected) ?? null) : null;
 
   return (
-    <Screen edges={[]} refreshing={data.isRefetching} onRefresh={() => void data.refetch()}>
-      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Plus", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
+    <Screen refreshing={data.isRefetching} onRefresh={() => void data.refetch()}>
       <ClubHeader title="Résultats" />
       <AppText variant="callout" tone="muted">
         Scores de la saison et classements FFBB, équipe par équipe.
