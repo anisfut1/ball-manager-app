@@ -7,6 +7,7 @@ import * as WebBrowser from "expo-web-browser";
 import { authApi } from "@/api/endpoints/auth";
 import { humanMessage } from "@/api/errors";
 import { useActiveClub, useSession } from "@/auth/SessionProvider";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
 import { AppText, Avatar, Badge, Banner, Button, Card, ListRow, Screen, SectionHeader, type BannerTone } from "@/components/ui";
 import { colors } from "@/design";
 import { env } from "@/config/env";
@@ -29,7 +30,8 @@ function roleLabels(roles: ReturnType<typeof useRoles>["roles"]): string[] {
 /** Profil : identité, club actif, clubs, enfants liés, rôles, notifications, version, déconnexion. */
 export default function ProfileScreen() {
   const club = useActiveClub();
-  const { state, person, setActivePerson, setActiveClub, logout } = useSession();
+  const { state, person, setActivePerson, logout } = useSession();
+  const { chooseClub } = useCurrentClubState();
   const { roles } = useRoles();
   const [permission, setPermission] = useState<PushPermission | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
@@ -81,12 +83,20 @@ export default function ProfileScreen() {
   const confirmLogout = () =>
     Alert.alert("Se déconnecter de ce club ?", `Tu ne recevras plus les notifications de ${club.clubName} sur cet appareil.`, [
       { text: "Annuler", style: "cancel" },
-      { text: "Se déconnecter", style: "destructive", onPress: () => void logout(club.clubSlug) },
+      {
+        text: "Se déconnecter",
+        style: "destructive",
+        onPress: () => {
+          // L'espace public du club reste ouvert, sans connexion.
+          router.replace("/");
+          void logout(club.clubSlug);
+        },
+      },
     ]);
 
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Plus", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen options={{ headerShown: true, title: "", headerBackTitle: "Retour", headerShadowVisible: false, headerStyle: { backgroundColor: colors.background } }} />
       <ClubHeader title="Profil" />
 
       {person ? (
@@ -136,7 +146,7 @@ export default function ProfileScreen() {
             title={c.clubName}
             subtitle={c.people.map((p) => p.firstName).join(", ")}
             trailing={c.clubSlug === club.clubSlug ? <Ionicons name="checkmark" size={20} color={colors.success} /> : undefined}
-            onPress={() => void setActiveClub(c.clubSlug)}
+            onPress={() => chooseClub({ slug: c.clubSlug, name: c.clubName, accentColor: c.accentColor, timezone: c.timezone })}
           />
         ))}
         <ListRow title="Ajouter un club" leading={<Ionicons name="add-circle-outline" size={22} color={colors.muted} />} onPress={() => router.push("/bienvenue")} />

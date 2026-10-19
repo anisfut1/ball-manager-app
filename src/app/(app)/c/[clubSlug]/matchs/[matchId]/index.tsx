@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { clubSpaceApi } from "@/api/endpoints/clubSpace";
 import { teamLifeApi } from "@/api/endpoints/teamLife";
 import { humanMessage } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
-import { useActiveClub } from "@/auth/SessionProvider";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
 import { AppText, Banner, CardSkeletons, ErrorState, Screen, SectionHeader } from "@/components/ui";
 import { colors, radius, spacing } from "@/design";
 import { useClubAccent } from "@/design/ClubTheme";
@@ -39,40 +39,25 @@ const TAB_ICONS: Record<MatchTab, keyof typeof Ionicons.glyphMap> = {
  */
 export default function MatchScreen() {
   const { matchId = "", section, tab: tabParam } = useLocalSearchParams<{ matchId: string; section?: string; tab?: string }>();
-  const club = useActiveClub();
   const info = useClubInfo();
+  const { session } = useCurrentClubState();
   const accent = useClubAccent();
   const [tab, setTab] = useState<MatchTab>(parseMatchTab(tabParam));
-  const documents = useQuery({ queryKey: queryKeys.matchDocuments(club.clubSlug, matchId), queryFn: () => clubSpaceApi.matchDocuments(club.clubSlug, matchId), enabled: tab === "emarque" });
-  const details = useQuery({ queryKey: queryKeys.match(club.clubSlug, matchId), queryFn: () => teamLifeApi.matchDetails(club.clubSlug, matchId) });
-  const coach = useCoachMatch(matchId);
-  const { query: center } = useActionCenter();
-  const { answer, pending, error } = useAnswer();
-  const mine = (center.data?.actions ?? []).filter((a) => a.type !== "COACH_MATCH" && a.type !== "COACH_TRAINING_SUMMARY" && "match" in a && a.match.id === matchId);
+  const documents = useQuery({ queryKey: queryKeys.matchDocuments(info.slug, matchId), queryFn: () => clubSpaceApi.matchDocuments(info.slug, matchId), enabled: tab === "emarque" });
+  // Fiche publique : sans session, l'appel part sans identifiant (comme /public sur le web).
+  const details = useQuery({ queryKey: queryKeys.match(info.slug, matchId), queryFn: () => teamLifeApi.matchDetails(info.slug, matchId) });
+  const [member, setMember] = useState<{ refetch: () => void } | null>(null);
   const m = details.data;
-  const coachFirst = section === "coach" || section === "maillots";
   const ours: ScoreboardTeam | null = m ? { name: clubSideLabel(m, info.name), logoName: info.name, logoUrl: info.logoUrl, isClub: true, accentColor: info.accentColor } : null;
   const theirs: ScoreboardTeam | null = m ? { name: m.opponentName ?? "?", logoName: m.opponentName ?? "?", logoUrl: m.opponentLogoUrl, isClub: false } : null;
   const [home, away] = m && m.isHome === false ? [theirs, ours] : [ours, theirs];
-
-  const family = mine.length ? (
-    <View style={styles.block}>
-      <SectionHeader title="Pour ce match" />
-      {error ? <Banner tone="danger" message={error} /> : null}
-      {mine.map((a) => (
-        <ActionItem key={actionKey(a)} action={a} answer={answer} disabled={pending} />
-      ))}
-    </View>
-  ) : null;
-  const coachPanel = coach.data ? <CoachMatchPanel data={coach.data.data} as={coach.data.as} openLaundry={section === "maillots"} /> : null;
 
   return (
     <Screen
       refreshing={details.isRefetching}
       onRefresh={() => {
         void details.refetch();
-        void coach.refetch();
-        void center.refetch();
+        member?.refetch();
       }}
     >
       <Stack.Screen options={{ headerShown: true, title: "Match", headerBackTitle: "Retour" }} />
@@ -96,17 +81,53 @@ export default function MatchScreen() {
           </ScrollView>
           {tab === "informations" ? <InformationsPanel match={m} home={home} away={away} /> : null}
           {tab === "composition" ? <CompositionPanel match={m} home={home} away={away} /> : null}
-          {tab === "statistiques" ? <StatsPanel match={m} home={home} away={away} playerBase={`/c/${club.clubSlug}/joueurs`} /> : null}
+          {tab === "statistiques" ? <StatsPanel match={m} home={home} away={away} playerBase={`/c/${info.slug}/joueurs`} /> : null}
           {tab === "officiels" ? <OfficialsPanel match={m} /> : null}
           {tab === "emarque" ? documents.isPending ? <CardSkeletons count={1} /> : <EmarquePanel match={m} documents={documents.data ?? []} /> : null}
         </>
       ) : null}
-      {tab === "informations" ? (coachFirst ? coachPanel : family) : null}
-      {tab === "informations" ? (coachFirst ? family : coachPanel) : null}
-      {tab === "informations" && coach.error ? <Banner tone="warning" message={humanMessage(coach.error)} /> : null}
-      {tab === "informations" ? <MatchRequestBlock matchId={matchId} /> : null}
-      {tab === "informations" ? <MatchOfficialBlock matchId={matchId} /> : null}
+      {tab === "informations" && session ? <MemberMatchBlocks matchId={matchId} section={section} onRefetch={setMember} /> : null}
     </Screen>
+  );
+}
+
+/** Ce qui concerne la famille et le coach : seulement pour un licencié reconnu de ce club. */
+function MemberMatchBlocks({ matchId, section, onRefetch }: { matchId: string; section?: string; onRefetch: (member: { refetch: () => void } | null) => void }) {
+  const coach = useCoachMatch(matchId);
+  const { query: center } = useActionCenter();
+  const { answer, pending, error } = useAnswer();
+  const mine = (center.data?.actions ?? []).filter((a) => a.type !== "COACH_MATCH" && a.type !== "COACH_TRAINING_SUMMARY" && "match" in a && a.match.id === matchId);
+  const coachFirst = section === "coach" || section === "maillots";
+  const refetchCoach = coach.refetch;
+  const refetchCenter = center.refetch;
+  useEffect(() => {
+    onRefetch({
+      refetch: () => {
+        void refetchCoach();
+        void refetchCenter();
+      },
+    });
+    return () => onRefetch(null);
+  }, [onRefetch, refetchCoach, refetchCenter]);
+
+  const family = mine.length ? (
+    <View style={styles.block}>
+      <SectionHeader title="Pour ce match" />
+      {error ? <Banner tone="danger" message={error} /> : null}
+      {mine.map((a) => (
+        <ActionItem key={actionKey(a)} action={a} answer={answer} disabled={pending} />
+      ))}
+    </View>
+  ) : null;
+  const coachPanel = coach.data ? <CoachMatchPanel data={coach.data.data} as={coach.data.as} openLaundry={section === "maillots"} /> : null;
+  return (
+    <>
+      {coachFirst ? coachPanel : family}
+      {coachFirst ? family : coachPanel}
+      {coach.error ? <Banner tone="warning" message={humanMessage(coach.error)} /> : null}
+      <MatchRequestBlock matchId={matchId} />
+      <MatchOfficialBlock matchId={matchId} />
+    </>
   );
 }
 

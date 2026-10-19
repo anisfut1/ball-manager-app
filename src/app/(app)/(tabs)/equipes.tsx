@@ -13,13 +13,21 @@ import { useClubAccent } from "@/design/ClubTheme";
 import { ClubHeader } from "@/features/home/ClubHeader";
 import { TeamPage } from "@/features/team/TeamPage";
 import { collectTeams } from "@/features/team-life/web-labels";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
+import { LicensedGateScreen } from "@/features/licensed-access/LicensedGateScreen";
+
+/** Réservé aux licenciés : la porte d'accès tant que personne n'est reconnu pour ce club (comme le web). */
+export default function TeamsTab() {
+  const { session, switching } = useCurrentClubState();
+  return session ? <MemberTeams /> : switching ? null : <LicensedGateScreen module="team" />;
+}
 
 /**
  * Onglet « Équipe » — copie du PublicTeamsApp du web : les équipes des
  * personnes de l'appareil, équipes coachées d'abord ; une seule équipe →
  * sa page directement.
  */
-export default function TeamsTab() {
+function MemberTeams() {
   const club = useActiveClub();
   const accent = useClubAccent();
   const queryClient = useQueryClient();

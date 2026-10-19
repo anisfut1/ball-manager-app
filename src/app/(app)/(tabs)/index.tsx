@@ -23,15 +23,23 @@ import { MatchCard } from "@/features/matches/MatchCard";
 import { groupByDay, MATCH_TZ } from "@/features/matches/match-model";
 import { useClubInfo } from "@/features/matches/useClubInfo";
 import { formatShortDay, formatTime } from "@/lib/dates";
+import { useCurrentClubState } from "@/club/CurrentClubProvider";
+import { LicensedGateScreen } from "@/features/licensed-access/LicensedGateScreen";
 
 const RELATION_LABEL: Record<HomeRelation, string> = { COACH: "Tu coaches", PLAYER: "Ton équipe" };
+
+/** Réservé aux licenciés : la porte d'accès tant que personne n'est reconnu pour ce club (comme le web). */
+export default function HomeScreen() {
+  const { session, switching } = useCurrentClubState();
+  return session ? <MemberHome /> : switching ? null : <LicensedGateScreen module="home" />;
+}
 
 /**
  * Accueil, même structure que l'accueil du web (PublicHomeApp) : « Bonjour »,
  * équipes et rôles, ce qu'il y a à faire (réponse en un geste), tables de
  * marque, derniers résultats, puis l'agenda. Données réelles uniquement.
  */
-export default function HomeScreen() {
+function MemberHome() {
   const { person } = useSession();
   const club = useClubInfo();
   const accent = useClubAccent();
