@@ -10,13 +10,18 @@ import { useSession } from "@/auth/SessionProvider";
 import { SsoCancelled } from "@/auth/callback";
 import { routeAfterSso } from "@/auth/sso-outcome";
 import { AppText, Banner, Button, Screen } from "@/components/ui";
-import { ClubBadge } from "@/features/onboarding/ClubBadge";
 import { ClubThemeProvider } from "@/design/ClubTheme";
-import { IdentifyFlow } from "@/features/identify/IdentifyFlow";
+import { LicensedAccessGate } from "@/features/licensed-access/LicensedAccessGate";
+import { LicensedBackdrop } from "@/features/licensed-access/LicensedBackdrop";
+import { moduleForRoute } from "@/features/licensed-access/modules";
 import { peekPendingDestination } from "@/linking/pendingDestination";
 import { colors, spacing } from "@/design";
 
-/** Connexion à un club : on se retrouve par son nom (lien par email), ou en un geste si déjà connecté au site dans Safari. */
+/**
+ * Connexion à un club = l'accès réservé aux licenciés (porte commune à tous
+ * les modules, contexte d'après la page demandée) : on se retrouve par son
+ * nom (lien par email), ou en un geste si déjà connecté au site dans Safari.
+ */
 export default function ClubLoginScreen() {
   const { clubSlug = "" } = useLocalSearchParams<{ clubSlug: string }>();
   const session = useSession();
@@ -48,19 +53,13 @@ export default function ClubLoginScreen() {
   return (
     <ClubThemeProvider accentColor={club.data?.accentColor}>
       <Screen>
-        <Button label="Changer de club" variant="ghost" icon={<Ionicons name="chevron-back" size={18} color={colors.muted} />} onPress={() => (router.canGoBack() ? router.back() : router.replace("/bienvenue"))} style={styles.back} />
-        <View style={styles.header}>
-          <ClubBadge name={name} logoUrl={club.data?.logoUrl ?? null} accentColor={club.data?.accentColor} size={72} />
-          <AppText variant="eyebrow" tone="muted">
-            {name}
-          </AppText>
-          <AppText variant="display" accessibilityRole="header" style={styles.center}>
-            Qui es-tu ?
-          </AppText>
+        <View pointerEvents="none" style={styles.backdrop}>
+          <LicensedBackdrop />
         </View>
+        <Button label="Changer de club" variant="ghost" icon={<Ionicons name="chevron-back" size={18} color={colors.muted} />} onPress={() => (router.canGoBack() ? router.back() : router.replace("/bienvenue"))} style={styles.back} />
         {pending?.clubSlug === clubSlug ? <Banner tone="info" message="Après la connexion, tu arriveras directement sur la page demandée." /> : null}
         {error ? <Banner tone="danger" message={error} /> : null}
-        <IdentifyFlow clubSlug={clubSlug} />
+        <LicensedAccessGate module={moduleForRoute(pending?.clubSlug === clubSlug ? pending.route : null)} clubSlug={clubSlug} clubName={name} logoUrl={club.data?.logoUrl ?? null} accentColor={club.data?.accentColor} />
         <View style={styles.or}>
           <View style={styles.rule} />
           <AppText variant="meta" tone="subtle">
@@ -83,8 +82,7 @@ export default function ClubLoginScreen() {
 
 const styles = StyleSheet.create({
   back: { alignSelf: "flex-start", paddingHorizontal: 0 },
-  header: { alignItems: "center", gap: spacing.sm, paddingTop: spacing.sm },
-  center: { textAlign: "center" },
+  backdrop: { position: "absolute", top: -spacing.md, left: -spacing.gutter, right: -spacing.gutter, height: 980 },
   or: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   rule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.borderStrong },
 });
