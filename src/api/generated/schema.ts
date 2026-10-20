@@ -5666,6 +5666,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/clubs/{clubId}/issues/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID ou slug du club */
+                    clubId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        key: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Anomalie retirée de la liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            dismissed: true;
+                        };
+                    };
+                };
+                /** @description Non authentifié */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Accès refusé */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Introuvable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/jobs/{jobId}": {
         parameters: {
             query?: never;
@@ -13047,7 +13121,7 @@ export interface components {
         };
         FbiActiveJobDto: {
             /** @enum {string} */
-            type: "test_connection" | "discover_emarque" | "reconcile_schedule" | "check_derogation" | "check_all_derogations" | "import_licences";
+            type: "test_connection" | "discover_emarque" | "reconcile_schedule" | "check_derogation" | "check_all_derogations" | "import_licences" | "create_derogation" | "respond_derogation";
             startedAt: string;
         } | null;
         SaveFbiCredentialsResponseDto: {
@@ -13254,6 +13328,10 @@ export interface components {
             horaire?: string | null;
             inverserRencontre: boolean;
             inverserEquipe: boolean;
+            /** @default false */
+            modifierSalle: boolean;
+            /** Format: uuid */
+            clubVenueId?: string | null;
         };
         PublicMeDto: {
             licencie: components["schemas"]["TableLicencieRefDto"];
@@ -13588,6 +13666,7 @@ export interface components {
             deleted: true;
         };
         IssueDto: {
+            key: string;
             /** Format: uuid */
             matchId: string | null;
             numero: string | null;
@@ -13596,7 +13675,7 @@ export interface components {
             /** @enum {string} */
             integration: "emarque" | "fbi_schedule" | "scheduling";
             /** @enum {string} */
-            type: "emarque_import_error" | "emarque_needs_review" | "fbi_schedule_mismatch" | "fbi_schedule_missing_in_ffbb" | "fbi_schedule_missing_in_fbi" | "venue_time_conflict";
+            type: "emarque_import_error" | "emarque_needs_review" | "fbi_schedule_mismatch" | "fbi_schedule_missing_in_ffbb" | "fbi_schedule_missing_in_fbi" | "venue_time_conflict" | "team_double_booking";
             /** @enum {string} */
             severity: "warning" | "error";
             /** @enum {string} */
@@ -13604,6 +13683,19 @@ export interface components {
             message: string;
             technicalCode: string;
             qualityWarnings: components["schemas"]["QualityWarningDto"][];
+            relatedMatches: {
+                matchId: string;
+                numero: string | null;
+                teamName: string | null;
+                opponentName: string | null;
+                matchDatetime: string;
+                venueLabel: string | null;
+                isHome: boolean | null;
+                coaches: {
+                    name: string;
+                    phone: string | null;
+                }[];
+            }[];
             createdAt: string | null;
             resolvedAt: string | null;
         };
@@ -13611,7 +13703,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            type: "test_connection" | "discover_emarque" | "reconcile_schedule" | "check_derogation" | "check_all_derogations" | "import_licences";
+            type: "test_connection" | "discover_emarque" | "reconcile_schedule" | "check_derogation" | "check_all_derogations" | "import_licences" | "create_derogation" | "respond_derogation";
             /** @enum {string} */
             status: "pending" | "claimed" | "running" | "succeeded" | "failed";
             attemptCount: number;

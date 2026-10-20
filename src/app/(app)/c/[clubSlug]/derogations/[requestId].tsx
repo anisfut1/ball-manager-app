@@ -138,6 +138,7 @@ function Thread({ as, request, timezone, venues, justSent }: { as: string; reque
             <OfficialDerogationForm
               openLabel="Faire la demande officielle (FBI)"
               initial={officialPrefill(request, timezone)}
+              venues={venues}
               submit={async (body) => {
                 const result = await derogationsApi.official(club.clubSlug, as, request.id, body);
                 queryClient.setQueryData(queryKeys.derogation(club.clubSlug, request.id), result.request);
@@ -305,7 +306,10 @@ function officialPrefill(request: DerogationDetail, timezone: string): Partial<O
   const newTime = formatTime(request.requestedStartAt, timezone);
   const sameDate = current ? localDateKey(new Date(current), timezone) === newDate : false;
   const sameTime = current ? formatTime(current, timezone) === newTime : false;
-  return { modifierDate: !sameDate, dateDerogation: newDate, modifierHoraire: !sameTime, horaire: newTime };
+  // Salle : cochée si le gymnase demandé n'est pas celui du match (libellé FBI « NOM - VILLE »).
+  const venue = request.requestedVenue;
+  const otherVenue = !!venue && !(request.match.venueName ?? "").toUpperCase().startsWith(venue.name.toUpperCase());
+  return { modifierDate: !sameDate, dateDerogation: newDate, modifierHoraire: !sameTime, horaire: newTime, modifierSalle: otherVenue, clubVenueId: venue?.id ?? "" };
 }
 
 const styles = StyleSheet.create({
