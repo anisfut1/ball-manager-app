@@ -27,10 +27,12 @@ export interface OfficialFormState {
   horaire: string; // HH:MM
   inverserRencontre: boolean;
   inverserEquipe: boolean;
+  modifierSalle: boolean;
+  clubVenueId: string;
   motif: string;
 }
 
-const INITIAL_FORM: OfficialFormState = { modifierDate: false, dateDerogation: "", modifierHoraire: false, horaire: "", inverserRencontre: false, inverserEquipe: false, motif: "" };
+const INITIAL_FORM: OfficialFormState = { modifierDate: false, dateDerogation: "", modifierHoraire: false, horaire: "", inverserRencontre: false, inverserEquipe: false, modifierSalle: false, clubVenueId: "", motif: "" };
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -45,11 +47,25 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
 
 /**
  * « Créer une dérogation » officielle FBI — copie du formulaire du web :
- * modifier date / horaire, inverser la rencontre / seulement les équipes
- * (exclusives), motif obligatoire. Écrit réellement sur FBI, jamais
+ * modifier date / horaire / salle (un gymnase du club, quand `venues` est
+ * fourni), inverser la rencontre / seulement les équipes (exclusives),
+ * motif obligatoire. Écrit réellement sur FBI, jamais
  * annulable depuis l'outil : confirmation explicite avant l'envoi.
  */
-export function OfficialDerogationForm({ submit, initial, openLabel = "Créer une dérogation", onSuccess }: { submit: (body: CreateOfficialDerogationBody) => Promise<OfficialOutcome>; initial?: Partial<OfficialFormState>; openLabel?: string; onSuccess?: () => void }) {
+export function OfficialDerogationForm({
+  submit,
+  initial,
+  openLabel = "Créer une dérogation",
+  onSuccess,
+  venues = [],
+}: {
+  submit: (body: CreateOfficialDerogationBody) => Promise<OfficialOutcome>;
+  initial?: Partial<OfficialFormState>;
+  openLabel?: string;
+  onSuccess?: () => void;
+  /** Gymnases du club : active « Modifier la salle ». */
+  venues?: { id: string; name: string; active?: boolean }[];
+}) {
   const start = { ...INITIAL_FORM, ...initial };
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<OfficialFormState>(start);
@@ -59,9 +75,11 @@ export function OfficialDerogationForm({ submit, initial, openLabel = "Créer un
 
   const dateOk = !form.modifierDate || DATE.test(form.dateDerogation);
   const timeOk = !form.modifierHoraire || TIME.test(form.horaire);
+  const salleOk = !form.modifierSalle || form.clubVenueId.length > 0;
   const inversionOk = !(form.inverserRencontre && form.inverserEquipe);
-  const something = form.modifierDate || form.modifierHoraire || form.inverserRencontre || form.inverserEquipe;
-  const valid = form.motif.trim().length > 0 && dateOk && timeOk && inversionOk && something;
+  const something = form.modifierDate || form.modifierHoraire || form.modifierSalle || form.inverserRencontre || form.inverserEquipe;
+  const valid = form.motif.trim().length > 0 && dateOk && timeOk && salleOk && inversionOk && something;
+  const salles = venues.filter((venue) => venue.active !== false || venue.id === form.clubVenueId);
 
   async function send() {
     setPending(true);
@@ -77,6 +95,8 @@ export function OfficialDerogationForm({ submit, initial, openLabel = "Créer un
         horaire: form.modifierHoraire ? form.horaire : null,
         inverserRencontre: form.inverserRencontre,
         inverserEquipe: form.inverserEquipe,
+        modifierSalle: form.modifierSalle,
+        clubVenueId: form.modifierSalle ? form.clubVenueId : null,
       });
       if (result.outcome === "success") {
         setStatus({ kind: "success", text: "Dérogation créée sur FBI." });
@@ -115,13 +135,29 @@ export function OfficialDerogationForm({ submit, initial, openLabel = "Créer un
         {form.modifierDate ? <TextField label="Nouvelle date (AAAA-MM-JJ)" value={form.dateDerogation} onChangeText={(v) => setForm({ ...form, dateDerogation: v })} keyboardType="numbers-and-punctuation" maxLength={10} error={form.dateDerogation && !dateOk ? "Format AAAA-MM-JJ." : null} /> : null}
         <ToggleRow label="Modifier l'horaire" value={form.modifierHoraire} onChange={(v) => setForm({ ...form, modifierHoraire: v })} />
         {form.modifierHoraire ? <TextField label="Nouvel horaire (HH:MM)" value={form.horaire} onChangeText={(v) => setForm({ ...form, horaire: v })} keyboardType="numbers-and-punctuation" maxLength={5} error={form.horaire && !timeOk ? "Format HH:MM." : null} /> : null}
+        {salles.length > 0 ? <ToggleRow label="Modifier la salle" value={form.modifierSalle} onChange={(v) => setForm({ ...form, modifierSalle: v })} /> : null}
+        {form.modifierSalle ? (
+          <View style={styles.venues} accessibilityRole="radiogroup" accessibilityLabel="Nouvelle salle">
+            {salles.map((venue) => {
+              const selected = venue.id === form.clubVenueId;
+              return (
+                <Pressable key={venue.id} accessibilityRole="radio" accessibilityState={{ selected }} onPress={() => setForm({ ...form, clubVenueId: venue.id })} style={[styles.venue, selected && styles.venueSelected]}>
+                  <Ionicons name={selected ? "radio-button-on" : "radio-button-off"} size={18} color={selected ? colors.foreground : colors.subtle} />
+                  <AppText variant="callout" style={styles.flex}>
+                    {venue.name}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         <ToggleRow label="Inverser la rencontre" value={form.inverserRencontre} onChange={(v) => setForm({ ...form, inverserRencontre: v, inverserEquipe: v ? false : form.inverserEquipe })} />
         <ToggleRow label="Inverser seulement les équipes" value={form.inverserEquipe} onChange={(v) => setForm({ ...form, inverserEquipe: v, inverserRencontre: v ? false : form.inverserRencontre })} />
       </View>
       <TextField label="Motif de la demande" value={form.motif} onChangeText={(v) => setForm({ ...form, motif: v })} multiline />
       {!something ? (
         <AppText variant="meta" tone="muted">
-          Coche au moins une modification (date, horaire, ou inversion).
+          Coche au moins une modification (date, horaire, salle ou inversion).
         </AppText>
       ) : null}
       <Banner tone="warning" message="Cette demande sera transmise à la FFBB et ne pourra pas être annulée depuis cet outil." />
@@ -411,6 +447,9 @@ function DataRows({ rows }: { rows: [string, string][] }) {
 }
 
 const styles = StyleSheet.create({
+  venues: { gap: spacing.xs, paddingBottom: spacing.sm },
+  venue: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+  venueSelected: { borderColor: colors.foreground, backgroundColor: colors.surfaceMuted },
   gap: { gap: spacing.md },
   start: { alignSelf: "flex-start" },
   flex: { flex: 1 },
