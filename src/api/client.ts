@@ -11,22 +11,43 @@ import { credentialHeaders, reportSessionInvalid } from "./credentials";
  */
 const REQUEST_TIMEOUT_MS = 20_000;
 
-function timeoutFetch(input: Request): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  return fetch(new Request(input, { signal: controller.signal })).finally(() => clearTimeout(timer));
+/**
+ * Envoi sur FBI (dérogation officielle, réponse) : connexion + envoi, ou
+ * attente du poste du club (jusqu'à 2 min côté serveur). 20 s coupait des
+ * envois pourtant réussis (constaté le 2026-10-20, match n°9327).
+ */
+const FBI_WRITE_TIMEOUT_MS = 150_000;
+
+function timeoutFetch(timeoutMs: number) {
+  return (input: Request): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(new Request(input, { signal: controller.signal })).finally(() => clearTimeout(timer));
+  };
 }
 
-let client: ReturnType<typeof createClient<paths>> | null = null;
+type Client = ReturnType<typeof createClient<paths>>;
+
+let client: Client | null = null;
+let fbiWriteClient: Client | null = null;
+let testClient: Client | null = null;
 
 export function api() {
-  if (!client) client = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch });
+  if (testClient) return testClient;
+  if (!client) client = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(REQUEST_TIMEOUT_MS) });
   return client;
 }
 
+/** Même API, délai long : écritures sur FBI uniquement. */
+export function fbiWriteApi() {
+  if (testClient) return testClient;
+  if (!fbiWriteClient) fbiWriteClient = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(FBI_WRITE_TIMEOUT_MS) });
+  return fbiWriteClient;
+}
+
 /** Réservé aux tests : client avec un `fetch` simulé. */
-export function setApiClientForTests(next: ReturnType<typeof createClient<paths>> | null): void {
-  client = next;
+export function setApiClientForTests(next: Client | null): void {
+  testClient = next;
 }
 
 /** En-têtes d'authentification de la session d'appareil du club (+ personne active). */
