@@ -14,6 +14,7 @@ import { env } from "@/config/env";
 import { DeleteAccountSection } from "@/features/account/DeleteAccountSection";
 import { ClubHeader } from "@/features/home/ClubHeader";
 import { useRoles } from "@/features/roles/useRoles";
+import { useAdminSession } from "@/features/admin/useAdminSession";
 import { enablePush, pushPermission, type PushPermission } from "@/push/registration";
 
 /** Libellés des rôles fusionnés : l'utilisateur voit ce qu'il peut faire, pas un « mode » à choisir. */
@@ -38,6 +39,9 @@ export default function ProfileScreen() {
   const [pushError, setPushError] = useState<string | null>(null);
   const clubs = Object.values(state.clubs);
   const labels = roleLabels(roles);
+  // Administration du club : proposée aux admins (ou à qui s'y est déjà connecté) ; le serveur exige un compte administrateur.
+  const admin = useAdminSession(club.clubSlug);
+  const showAdmin = roles.isClubAdmin || admin.status === "signed-in";
 
   useEffect(() => {
     void pushPermission().then(setPermission);
@@ -118,6 +122,18 @@ export default function ProfileScreen() {
             ))}
           </Card>
         </>
+      ) : null}
+
+      {showAdmin ? (
+        <Card padded={false} style={{ paddingHorizontal: 16 }}>
+          <ListRow
+            title="Administration du club"
+            subtitle="Anomalies, gymnases, réservation salle…"
+            leading={<Ionicons name="shield-checkmark-outline" size={22} color={colors.muted} />}
+            trailing={<Ionicons name="chevron-forward" size={18} color={colors.subtle} />}
+            onPress={() => router.push(`/c/${club.clubSlug}/admin`)}
+          />
+        </Card>
       ) : null}
 
       {club.people.length > 1 ? (
