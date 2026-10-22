@@ -18,6 +18,13 @@ const REQUEST_TIMEOUT_MS = 20_000;
  */
 const FBI_WRITE_TIMEOUT_MS = 150_000;
 
+/**
+ * Administration (2026-10-22) : synchro FFBB, traitement des jobs FBI,
+ * vérification de toutes les dérogations — jusqu'à ~4-5 min côté serveur
+ * (plafond Vercel 300 s), même délai que le site.
+ */
+const ADMIN_LONG_TIMEOUT_MS = 280_000;
+
 function timeoutFetch(timeoutMs: number) {
   return (input: Request): Promise<Response> => {
     const controller = new AbortController();
@@ -30,6 +37,7 @@ type Client = ReturnType<typeof createClient<paths>>;
 
 let client: Client | null = null;
 let fbiWriteClient: Client | null = null;
+let adminLongClient: Client | null = null;
 let testClient: Client | null = null;
 
 export function api() {
@@ -43,6 +51,13 @@ export function fbiWriteApi() {
   if (testClient) return testClient;
   if (!fbiWriteClient) fbiWriteClient = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(FBI_WRITE_TIMEOUT_MS) });
   return fbiWriteClient;
+}
+
+/** Même API, délai de 280 s : opérations d'administration longues (FFBB, FBI). */
+export function adminLongApi() {
+  if (testClient) return testClient;
+  if (!adminLongClient) adminLongClient = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(ADMIN_LONG_TIMEOUT_MS) });
+  return adminLongClient;
 }
 
 /** Réservé aux tests : client avec un `fetch` simulé. */

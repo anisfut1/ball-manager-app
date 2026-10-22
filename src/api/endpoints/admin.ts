@@ -1,4 +1,4 @@
-import { api, call } from "../client";
+import { adminLongApi, api, call } from "../client";
 import { credentialHeaders } from "../credentials";
 import { ApiError } from "../errors";
 import type { Dto } from "../types";
@@ -17,7 +17,13 @@ export type VenueClosurePeriod = Dto<"VenueClosurePeriod">;
 export type CreateVenueClosureDto = Dto<"CreateVenueClosureDto">;
 export type IssueDto = Dto<"IssueDto">;
 export type TeamDto = Dto<"TeamDto">;
+export type CreateTeamDto = Dto<"CreateTeamDto">;
+export type UpdateTeamDto = Dto<"UpdateTeamDto">;
 export type MatchListItemDto = Dto<"MatchListItemDto">;
+export type IntegrationStatusDto = Dto<"IntegrationStatusDto">;
+export type SyncRunDto = Dto<"SyncRunDto">;
+export type ClubDto = Dto<"ClubDto">;
+export type UpdateClubDto = Dto<"UpdateClubDto">;
 
 /** Plus de session admin utilisable : l'écran redemande la connexion. */
 export class AdminSessionRequiredError extends Error {
@@ -106,8 +112,27 @@ export const adminApi = {
   issues: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/issues", { params: club(clubId), headers })).then((r) => r.issues),
   dismissIssue: (slug: string, key: string) => adminCall(slug, (clubId, headers) => api().POST("/v1/clubs/{clubId}/issues/dismiss", { params: club(clubId), headers, body: { key } })),
   teams: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/teams", { params: club(clubId), headers })).then((r) => r.teams),
+  createTeam: (slug: string, body: CreateTeamDto) => adminCall(slug, (clubId, headers) => api().POST("/v1/clubs/{clubId}/teams", { params: club(clubId), headers, body })),
+  updateTeam: (slug: string, teamId: string, body: UpdateTeamDto) =>
+    adminCall(slug, (clubId, headers) => api().PATCH("/v1/clubs/{clubId}/teams/{teamId}", { params: { path: { clubId, teamId } }, headers, body })),
+  club: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}", { params: club(clubId), headers })),
+  updateClub: (slug: string, body: UpdateClubDto) => adminCall(slug, (clubId, headers) => api().PATCH("/v1/clubs/{clubId}", { params: club(clubId), headers, body })),
+  capabilities: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/capabilities", { params: club(clubId), headers })),
+  integrations: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/integrations", { params: club(clubId), headers })),
+  syncRuns: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/integrations/sync-runs", { params: club(clubId), headers })).then((r) => r.syncRuns),
+  triggerFfbbSync: (slug: string) => adminCall(slug, (clubId, headers) => adminLongApi().POST("/v1/clubs/{clubId}/integrations/ffbb/sync", { params: club(clubId), headers })),
+  saveFbiCredentials: (slug: string, body: { username: string; password?: string }) =>
+    adminCall(slug, (clubId, headers) => api().POST("/v1/clubs/{clubId}/integrations/fbi", { params: club(clubId), headers, body })),
+  testFbi: (slug: string) => adminCall(slug, (clubId, headers) => adminLongApi().POST("/v1/clubs/{clubId}/integrations/fbi/test", { params: club(clubId), headers })),
+  processFbiJobs: (slug: string) => adminCall(slug, (clubId, headers) => adminLongApi().POST("/v1/clubs/{clubId}/integrations/fbi/process-jobs", { params: club(clubId), headers })),
+  parseFbiDocuments: (slug: string) => adminCall(slug, (clubId, headers) => adminLongApi().POST("/v1/clubs/{clubId}/integrations/fbi/parse-documents", { params: club(clubId), headers })),
+  reconcileFbiSchedule: (slug: string) => adminCall(slug, (clubId, headers) => api().POST("/v1/clubs/{clubId}/integrations/fbi/reconcile-schedule", { params: club(clubId), headers })),
+  checkAllDerogations: (slug: string) => adminCall(slug, (clubId, headers) => adminLongApi().POST("/v1/clubs/{clubId}/integrations/fbi/check-all-derogations", { params: club(clubId), headers })),
+  emarqueTracking: (slug: string) => adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/emarque-tracking", { params: club(clubId), headers })).then((r) => r.matches),
+  relaunchEmarque: (slug: string, matchId: string) =>
+    adminCall(slug, (clubId, headers) => api().POST("/v1/clubs/{clubId}/emarque-tracking/{matchId}/relaunch", { params: { path: { clubId, matchId } }, headers })),
   /** Tous les matchs d'une période (pages de 200, comme le site). */
-  matches: async (slug: string, range: { from: string; to: string }): Promise<MatchListItemDto[]> => {
+  matches: async (slug: string, range: { from: string; to?: string }): Promise<MatchListItemDto[]> => {
     const all: MatchListItemDto[] = [];
     for (let offset = 0; ; offset += MATCH_PAGE) {
       const page = await adminCall(slug, (clubId, headers) => api().GET("/v1/clubs/{clubId}/matches", { params: { path: { clubId }, query: { ...range, limit: MATCH_PAGE, offset } }, headers }));
