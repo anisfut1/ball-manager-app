@@ -23,7 +23,7 @@ export interface SlotSelection {
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-const ROW = 48; // hauteur d'une heure — cibles tactiles ≥ 44 pt
+const ROW = 48; // hauteur d'un créneau — cibles tactiles ≥ 44 pt
 
 function minutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
@@ -155,9 +155,11 @@ function VenuePlanning({ availability, selected, onSelect, localTime }: { availa
   const gridEnd = minutes(availability.rules.gridEnd) + availability.rules.durationMinutes;
   const hours: number[] = [];
   for (let m = Math.floor(gridStart / 60) * 60; m <= gridEnd; m += 60) hours.push(m);
-  const height = ((gridEnd - gridStart) / 60) * ROW;
-  const top = (hhmm: string) => ((minutes(hhmm) - gridStart) / 60) * ROW;
-  const block = (availability.rules.durationMinutes / 60) * ROW;
+  // Un créneau garde ROW de haut quel que soit le pas (demi-heures depuis le 2026-10-22) : l'heure s'agrandit d'autant.
+  const hourHeight = ROW * (60 / (availability.rules.slotStepMinutes || 60));
+  const height = ((gridEnd - gridStart) / 60) * hourHeight;
+  const top = (hhmm: string) => ((minutes(hhmm) - gridStart) / 60) * hourHeight;
+  const block = (availability.rules.durationMinutes / 60) * hourHeight;
 
   return (
     <View style={styles.gap}>
@@ -182,14 +184,14 @@ function VenuePlanning({ availability, selected, onSelect, localTime }: { availa
             <View style={styles.timeline}>
               <View style={[styles.scale, { height }]}>
                 {hours.map((m) => (
-                  <AppText key={m} variant="meta" tone="subtle" style={[styles.hour, { top: ((m - gridStart) / 60) * ROW - 8 }]}>
+                  <AppText key={m} variant="meta" tone="subtle" style={[styles.hour, { top: ((m - gridStart) / 60) * hourHeight - 8 }]}>
                     {`${String(Math.floor(m / 60)).padStart(2, "0")}:00`}
                   </AppText>
                 ))}
               </View>
               <View style={[styles.track, { height }]}>
                 {hours.map((m) => (
-                  <View key={m} style={[styles.line, { top: ((m - gridStart) / 60) * ROW }]} />
+                  <View key={m} style={[styles.line, { top: ((m - gridStart) / 60) * hourHeight }]} />
                 ))}
                 {lane.candidateStartTimes.map((slot) => {
                   const isSel = selected?.venueId === lane.venue.id && selected.startAt === slot.startAt;
