@@ -1,6 +1,6 @@
-import { AppState } from "react-native";
-import { Text } from "react-native";
+import { AppState, Text } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import createClient from "openapi-fetch";
@@ -47,13 +47,18 @@ function installNetwork(state: SessionState) {
   setApiClientForTests(createClient<paths>({ baseUrl: "https://api.test", fetch: fetchMock as unknown as typeof fetch }));
 }
 
-let session: ReturnType<typeof useSession>;
+// Dernière valeur de useSession(), exposée aux tests (affectée dans un effet, jamais pendant le rendu).
+const latest: { current: ReturnType<typeof useSession> | null } = { current: null };
+const session = () => latest.current!;
 function Probe() {
-  session = useSession();
+  const value = useSession();
+  useEffect(() => {
+    latest.current = value;
+  });
   return (
     <>
-      <Text testID="status">{session.status}</Text>
-      <Text testID="clubs">{Object.keys(session.state.clubs).join(",")}</Text>
+      <Text testID="status">{value.status}</Text>
+      <Text testID="clubs">{Object.keys(value.state.clubs).join(",")}</Text>
     </>
   );
 }
@@ -116,7 +121,7 @@ describe("trousseau illisible au démarrage", () => {
   it("un lien personnel ouvert à ce moment est REFUSÉ et n'écrase aucune session", async () => {
     failNextRead();
     await mount(stateOf(ALPHA, BETA));
-    await expect(session.bootstrapFromToken("club-gamma", "jeton-personnel-1234")).rejects.toBeInstanceOf(SessionStorageUnavailableError);
+    await expect(session().bootstrapFromToken("club-gamma", "jeton-personnel-1234")).rejects.toBeInstanceOf(SessionStorageUnavailableError);
     expect(Object.keys(stored().clubs)).toEqual(["club-alpha", "club-beta"]);
     expect(stored().clubs["club-alpha"]?.secret).toBe(ALPHA.secret);
   });
@@ -137,7 +142,7 @@ describe("trousseau illisible au démarrage", () => {
     await unlock();
     await waitFor(() => expect(status()).toBe("AUTHENTICATED"));
     await act(async () => {
-      await session.bootstrapFromToken("club-gamma", "jeton-personnel-1234");
+      await session().bootstrapFromToken("club-gamma", "jeton-personnel-1234");
     });
     expect(Object.keys(stored().clubs).sort()).toEqual(["club-alpha", "club-beta", "club-gamma"]);
     expect(stored().clubs["club-alpha"]?.secret).toBe(ALPHA.secret);
@@ -155,7 +160,7 @@ describe("trousseau lisible (comportement normal inchangé)", () => {
     await mount(stateOf(ALPHA));
     await storage.remove(SESSION_KEY);
     await act(async () => {
-      await session.bootstrapFromToken("club-gamma", "jeton-personnel-1234");
+      await session().bootstrapFromToken("club-gamma", "jeton-personnel-1234");
     });
     expect(Object.keys(stored().clubs)).toContain("club-gamma");
   });
