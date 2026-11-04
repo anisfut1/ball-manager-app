@@ -11,21 +11,28 @@ updates:
       prefix: "chore(deps)"
     groups:
       # patch et minor groupés ; les majeures restent une PR chacune (hors groupe).
-      # Les paquets Expo et React Native se montent ensemble avec `npx expo install --fix` : à traiter à la main.
       npm-minor-patch:
         update-types: [minor, patch]
-        exclude-patterns: ["expo", "expo-*", "react-native", "react-native-*", "react", "react-dom", "@react-native/*"]
     ignore:
-      # Le SDK Expo impose ses versions de React Native, React et des modules natifs.
+      # Paquets dont la version est IMPOSÉE par le SDK Expo : un par un, Dependabot propose des montées
+      # incompatibles entre elles (CI rouge : conflits de dépendances « peer »). Ils se montent ENSEMBLE,
+      # à la main, avec `npx expo install --fix` lors d'une montée du SDK (cf. docs/AUDIT_SECURITE_2026-11.md, A1).
       - dependency-name: "expo"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-native"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
       - dependency-name: "react"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      # TypeScript 7 : refusé (typescript-eslint ne l'accepte pas, décision du chantier sécurité 2026-11).
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "jest-expo"
+      - dependency-name: "@types/react"
+      - dependency-name: "react-test-renderer"
+      - dependency-name: "test-renderer"
+      # ESLint 10 : `eslint-config-expo` / `eslint-plugin-import` n'acceptent que ESLint <= 9 (CI rouge).
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 : refusé sur le back (typescript-eslint 8 ne l'accepte pas) ; même chaîne de lint ici.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
