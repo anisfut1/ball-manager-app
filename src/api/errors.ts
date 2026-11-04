@@ -3,6 +3,8 @@
  * `{ error: { code, message } }` avec un message français déjà lisible pour
  * les erreurs métier (4xx) : on le garde. On ne montre jamais « HTTP 409 ».
  */
+import { SessionStorageUnavailableError } from "@/auth/storage-errors";
+
 export type ApiErrorKind = "offline" | "timeout" | "unauthorized" | "forbidden" | "not_found" | "conflict" | "validation" | "rate_limited" | "server";
 
 export class ApiError extends Error {
@@ -77,5 +79,6 @@ export function networkError(cause: unknown): ApiError {
 /** Message à afficher pour n'importe quelle erreur (jamais de stack ni de code HTTP). */
 export function humanMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
+  if (error instanceof SessionStorageUnavailableError) return error.message;
   return "Une erreur inattendue est survenue. Réessaie.";
 }
