@@ -31,7 +31,7 @@ const person = (id: string) => ({ licencieId: id, firstName: id, lastName: "Exem
 const club = (slug: string, secret: string): ClubSession => ({ clubSlug: slug, clubName: slug, accentColor: null, timezone: "Europe/Paris", secret, people: [person(`lic-${slug}`)], activeLicencieId: `lic-${slug}` });
 const ALPHA = club("club-alpha", "bmd_SENTINEL_ALPHA_0123456789abcdef");
 const BETA = club("club-beta", "bmd_SENTINEL_BETA_0123456789abcdef");
-const GAMMA_SECRET = "bmd_SENTINEL_GAMMA_0123456789abcdef";
+const GAMMA_SESSION_VALUE = "bmd_SENTINEL_GAMMA_0123456789abcdef";
 const stateOf = (...clubs: ClubSession[]): SessionState => ({ v: 1, active: clubs[0]!.clubSlug, clubs: Object.fromEntries(clubs.map((c) => [c.clubSlug, c])) });
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -40,7 +40,7 @@ function installNetwork(state: SessionState) {
   const fetchMock = async (request: Request) => {
     const { pathname } = new URL(request.url);
     const slug = /\/clubs\/([^/]+)/.exec(pathname)?.[1] ?? "";
-    if (pathname.endsWith("/auth/device-sessions")) return json(201, { sessionSecret: GAMMA_SECRET, expiresAt: "2027-01-01T00:00:00Z", people: [person("lic-club-gamma")], redirectPath: null });
+    if (pathname.endsWith("/auth/device-sessions")) return json(201, { sessionSecret: GAMMA_SESSION_VALUE, expiresAt: "2027-01-01T00:00:00Z", people: [person("lic-club-gamma")], redirectPath: null });
     if (pathname.endsWith(`/clubs/${slug}`)) return json(200, { name: slug, accentColor: null, timezone: "Europe/Paris", logoUrl: null });
     return json(200, { people: state.clubs[slug]?.people ?? [person(`lic-${slug}`)] });
   };

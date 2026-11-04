@@ -1,0 +1,6 @@
+# Une seule empreinte exacte (commit:fichier:règle:ligne), introduite par 25d5bb5d0e
+# (« fix(auth): une lecture du trousseau en erreur ne vaut plus « aucune session » (A2) »).
+# Fausse valeur de session de TEST (« bmd_SENTINEL_… ») nommée « …_SECRET », détectée par la règle
+# generic-api-key ; renommée dans le fichier courant mais toujours présente dans l'historique git.
+# Aucun chemin ni expression régulière : tout autre résultat reste signalé.
+25d5bb5d0ec4c55e0385bd0f7427ade2dd490719:src/auth/session-storage-blocked.test.tsx:generic-api-key:34
