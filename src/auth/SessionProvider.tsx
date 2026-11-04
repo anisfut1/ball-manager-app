@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { AppState } from "react-native";
 import * as Application from "expo-application";
 import * as WebBrowser from "expo-web-browser";
 import { useQueryClient } from "@tanstack/react-query";
@@ -92,22 +93,68 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "REFRESHED", state, expiredClubs, redirectTo: before.active && expiredClubs.includes(before.active) ? before.active : undefined });
   }, [persist, queryClient]);
 
+  // Trousseau illisible au démarrage (appareil verrouillé…) : « illisible » n'est PAS « aucune session ».
+  // Le dépôt refuse alors toute écriture (rien n'est écrasé) et l'app retente au retour au premier plan
+  // et à intervalle régulier jusqu'à relire les VRAIES sessions (A2, docs/AUDIT_SECURITE_2026-11.md).
+  const [storageBlocked, setStorageBlocked] = useState(false);
+
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const state = await repository.load();
+      const loaded = await repository.tryLoad();
+      if (!alive) return;
+      if (!loaded) {
+        // Démarre comme « non connecté », sans rien écrire ; la liste des refus n'est pas non plus écrite (non relue).
+        stateRef.current = EMPTY_STATE;
+        dispatch({ type: "BOOTED", state: EMPTY_STATE });
+        setStorageBlocked(true);
+        return;
+      }
       const refused = await refusedRepository.load();
       if (!alive) return;
-      stateRef.current = state;
+      stateRef.current = loaded;
       refusalLoaded.current = true;
       dispatchRefusal({ type: "LOADED", clubs: refused });
-      dispatch({ type: "BOOTED", state });
-      if (Object.keys(state.clubs).length > 0) await refresh();
+      dispatch({ type: "BOOTED", state: loaded });
+      if (Object.keys(loaded.clubs).length > 0) await refresh();
     })();
     return () => {
       alive = false;
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!storageBlocked) return;
+    let alive = true;
+    let running = false;
+    const retry = async () => {
+      if (running || !alive) return;
+      running = true;
+      try {
+        const loaded = await repository.tryLoad();
+        if (!loaded || !alive) return;
+        const refused = await refusedRepository.load();
+        if (!alive) return;
+        stateRef.current = loaded;
+        refusalLoaded.current = true;
+        dispatchRefusal({ type: "LOADED", clubs: refused });
+        dispatch({ type: "BOOTED", state: loaded });
+        setStorageBlocked(false);
+        if (Object.keys(loaded.clubs).length > 0) await refresh();
+      } finally {
+        running = false;
+      }
+    };
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") void retry();
+    });
+    const timer = setInterval(() => void retry(), 5000);
+    return () => {
+      alive = false;
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, [storageBlocked, refresh]);
 
   useEffect(() => {
     if (refusalLoaded.current) void refusedRepository.save(refusal.clubs).catch(() => undefined);
@@ -123,7 +170,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const wasActive = stateRef.current.active === slug;
         dispatchRefusal({ type: "REFUSED", clubs: [{ clubSlug: slug, clubName: refused.clubName }] });
         const next = withoutClub(stateRef.current, slug);
-        void persist(next);
+        void persist(next).catch(() => undefined);
         queryClient.removeQueries({ predicate: (q) => q.queryKey.includes(slug) });
         dispatch({ type: "SESSION_INVALID", state: next, redirectTo: wasActive ? slug : undefined });
       },

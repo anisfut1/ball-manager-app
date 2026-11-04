@@ -1,3 +1,4 @@
+import { SessionStorageUnavailableError } from "@/auth/storage-errors";
 import { ApiError, apiErrorFrom, humanMessage, networkError } from "./errors";
 
 describe("erreurs API", () => {
@@ -37,6 +38,10 @@ describe("erreurs API", () => {
     expect(apiErrorFrom(401, { error: { code: "INVALID_PERSONAL_LINK", message: "x" } }).linkExpired).toBe(false);
     expect(apiErrorFrom(401, { error: { code: "SESSION_INVALID", message: "x" } }).linkExpired).toBe(false);
     expect(apiErrorFrom(403, { error: { code: "PERSONAL_LINK_EXPIRED", message: "x" } }).linkExpired).toBe(false);
+  });
+
+  it("trousseau illisible : message clair, jamais « erreur inattendue »", () => {
+    expect(humanMessage(new SessionStorageUnavailableError())).toBe("Stockage sécurisé indisponible : déverrouille ton téléphone puis réessaie.");
   });
 
   it("réseau coupé / délai dépassé", () => {
