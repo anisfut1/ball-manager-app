@@ -53,6 +53,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "fr.ballmanager.app",
+    // Pas de sauvegarde automatique Google Drive des données de l'app (jeton de session d'appareil
+    // compris) : A3, docs/AUDIT_SECURITE_2026-11.md.
+    allowBackup: false,
     adaptiveIcon: {
       backgroundColor: "#111111",
       foregroundImage: "./assets/images/android-icon-foreground.png",
