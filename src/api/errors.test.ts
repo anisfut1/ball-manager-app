@@ -26,6 +26,19 @@ describe("erreurs API", () => {
     expect(apiErrorFrom(401, { error: { code: "INVALID_PERSONAL_LINK", message: "x" } }).sessionExpired).toBe(false);
   });
 
+  it("401 PERSONAL_LINK_EXPIRED : lien expiré, message fixe, distinct d'une session expirée", () => {
+    const e = apiErrorFrom(401, { error: { code: "PERSONAL_LINK_EXPIRED", message: "texte serveur quelconque" } });
+    expect(e.linkExpired).toBe(true);
+    expect(e.sessionExpired).toBe(false);
+    expect(humanMessage(e)).toBe("Lien expiré, demandez-en un nouveau.");
+  });
+
+  it("les autres 401 ne sont jamais un lien expiré", () => {
+    expect(apiErrorFrom(401, { error: { code: "INVALID_PERSONAL_LINK", message: "x" } }).linkExpired).toBe(false);
+    expect(apiErrorFrom(401, { error: { code: "SESSION_INVALID", message: "x" } }).linkExpired).toBe(false);
+    expect(apiErrorFrom(403, { error: { code: "PERSONAL_LINK_EXPIRED", message: "x" } }).linkExpired).toBe(false);
+  });
+
   it("réseau coupé / délai dépassé", () => {
     expect(networkError(new TypeError("Network request failed")).kind).toBe("offline");
     const timeout = new Error("t");

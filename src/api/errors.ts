@@ -20,7 +20,15 @@ export class ApiError extends Error {
   get sessionExpired(): boolean {
     return this.status === 401 && (this.code === "SESSION_INVALID" || this.code === "SESSION_REQUIRED");
   }
+
+  /** Le lien personnel a dépassé ses 7 jours : en redemander un (jamais une session expirée). */
+  get linkExpired(): boolean {
+    return this.status === 401 && this.code === LINK_EXPIRED_CODE;
+  }
 }
+
+const LINK_EXPIRED_CODE = "PERSONAL_LINK_EXPIRED";
+const LINK_EXPIRED_MESSAGE = "Lien expiré, demandez-en un nouveau.";
 
 const FALLBACK: Record<ApiErrorKind, string> = {
   offline: "Pas de connexion internet. Vérifie ton réseau puis réessaie.",
@@ -55,7 +63,7 @@ export function apiErrorFrom(status: number, body: unknown): ApiError {
   const code = typeof err?.code === "string" ? err.code : null;
   const serverMessage = typeof err?.message === "string" && err.message.trim() ? err.message.trim() : null;
   // 5xx : jamais le détail technique du serveur.
-  const message = kind === "server" ? FALLBACK.server : (serverMessage ?? FALLBACK[kind]);
+  const message = kind === "server" ? FALLBACK.server : status === 401 && code === LINK_EXPIRED_CODE ? LINK_EXPIRED_MESSAGE : (serverMessage ?? FALLBACK[kind]);
   return new ApiError(kind, message, status, code);
 }
 
