@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # patch et minor groupés ; les majeures restent une PR chacune (hors groupe).
+      # Les paquets Expo et React Native se montent ensemble avec `npx expo install --fix` : à traiter à la main.
+      npm-minor-patch:
+        update-types: [minor, patch]
+        exclude-patterns: ["expo", "expo-*", "react-native", "react-native-*", "react", "react-dom", "@react-native/*"]
+    ignore:
+      # Le SDK Expo impose ses versions de React Native, React et des modules natifs.
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # TypeScript 7 : refusé (typescript-eslint ne l'accepte pas, décision du chantier sécurité 2026-11).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
