@@ -7,7 +7,7 @@ Périmètre : `ball-manager-app` (Expo SDK 57, iOS et Android). Audit statique d
 | Réf. | Sujet | Constat | Gravité | Suite |
 | --- | --- | --- | --- | --- |
 | A1 | Dépendances | `zod` 4.6.5 vulnérable (haute) ; `decode-uri-component` via `expo-router` (haute) ; le reste vient surtout d'outils de build et de test | Moyenne | `zod` corrigé dans le lot A1. Le reste exige un changement majeur du SDK Expo |
-| A2 | Stockage des jetons | Keychain iOS en `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` | Faible | **Décision à prendre** (voir ci-dessous) |
+| A2 | Stockage des jetons | Keychain iOS en `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` ; `load()` masque les erreurs de lecture | Faible | Ne pas changer maintenant ; durcir `load()` d'abord (voir ci-dessous) |
 | A3 | Android | `allowBackup` non fixé ; pas de minification R8 | Moyenne | `allowBackup: false` dans le lot A3 ; R8 demande un nouveau paquet à valider |
 | A4 | Liens profonds | Bien verrouillés | Aucune | Rien à faire |
 | A5 | CI | Aucune CI | Moyenne | À créer |
@@ -29,7 +29,13 @@ Décision proposée : corriger `zod` maintenant ; prévoir une montée du SDK Ex
 - Les secrets passent tous par `expo-secure-store` (`src/auth/secure-storage.ts`). Aucun `AsyncStorage`, `localStorage` ni MMKV dans le code.
 - Accessibilité actuelle : `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` (jamais sauvegardé ni restauré sur un autre appareil). La feuille de route propose `WHEN_UNLOCKED_THIS_DEVICE_ONLY`.
 - Les secrets ne sont lus que par `SessionProvider` (premier plan). Aucune tâche d'arrière-plan (`TaskManager`, `BackgroundFetch`) ; les notifications sont affichées par le système et ouvrent l'app au toucher. Le passage à `WHEN_UNLOCKED` semble donc compatible.
-- **Risque non levé** : changer l'accessibilité d'éléments déjà stockés peut les rendre illisibles et déconnecter tous les utilisateurs si la lecture filtre sur cet attribut. Je n'ai pas pu le tester sans appareil. **À tester sur appareil, avec une migration lecture puis réécriture, avant de changer.** Le gain est faible (appareil verrouillé après un premier déverrouillage).
+- **Constats vérifiés dans le code d'`expo-secure-store` 57 (iOS, `SecureStoreModule.swift`)** :
+  1. La **lecture** ne filtre pas sur l'accessibilité (requête par service et clé seulement) : changer l'option ne rend **pas** les anciens secrets illisibles.
+  2. L'**écriture** d'un secret déjà présent ne met à jour que sa valeur (`update`), jamais son accessibilité. Changer l'option ne protège donc que les **nouveaux** secrets ; les appareils existants gardent `AFTER_FIRST_UNLOCK` tant que le secret n'est pas supprimé puis réécrit (migration explicite, avec sauvegarde pour ne rien perdre si l'app s'arrête entre les deux).
+  3. Sur Android l'option est ignorée (Keystore).
+- **Lancement en arrière-plan appareil verrouillé : non activé.** Le mode `remote-notification` n'est pas déclaré (le plugin `expo-notifications` ne l'ajoute que si `enableBackgroundRemoteNotifications` est vrai) et le back envoie des notifications `alert` sans `content-available`. L'app ne tourne donc pas verrouillée, et `WHEN_UNLOCKED` ne devrait pas empêcher de lire. **Non testé sur appareil** (préchauffage iOS notamment).
+- **Fragilité indépendante du choix de l'accessibilité** : `session-repository.ts › load()` attrape toute erreur de lecture et renvoie un état **vide**. Si une lecture échouait (appareil verrouillé, erreur Keychain), l'app resterait lancée avec un état vide ; ouvrir ensuite un lien personnel réécrirait le stockage et **écraserait** les sessions des autres clubs ou personnes. À durcir (distinguer « rien de stocké » d'« erreur de lecture » et ne pas écraser dans ce cas) avant toute évolution du Keychain.
+- **Recommandation** : ne pas changer l'accessibilité pour l'instant. Gain faible (un attaquant doit déjà tenir l'appareil verrouillé après un premier déverrouillage), migration à écrire avec soin, et aucune validation possible sans appareil. À reprendre après avoir (a) durci `load()` et (b) validé le tout sur un build TestFlight.
 
 ## A3 — Android
 
