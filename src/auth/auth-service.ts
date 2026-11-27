@@ -1,8 +1,9 @@
 import { ApiError } from "@/api/errors";
 import type { DeleteAccountResult, DeviceMeta, DeviceSessionDto } from "@/api/endpoints/auth";
+import type { AccountDto, AccountSessionDto } from "@/api/endpoints/account";
 import type { Pkce } from "./pkce";
 import { parseSsoCallback, SSO_CALLBACK, SsoCancelled } from "./callback";
-import { withClub, withoutClub, withPeople, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
+import { withAccountTokens, withClub, withoutClub, withPeople, type ClubSession, type SessionPerson, type SessionState } from "./session-model";
 
 /**
  * Services d'authentification — sans React, dépendances injectées (testés).
@@ -21,8 +22,16 @@ export interface AuthApi {
   removePerson(clubSlug: string, secret: string, licencieId: string): Promise<unknown>;
 }
 
+/** Comptes (email + mot de passe, docs/ACCOUNTS.md du back). */
+export interface AccountServiceApi {
+  get(clubSlug: string, accessToken: string): Promise<AccountDto>;
+  importDeviceSession(clubSlug: string, accessToken: string, sessionSecret: string): Promise<AccountDto>;
+  refresh(refreshToken: string): Promise<AccountSessionDto>;
+}
+
 export interface AuthDeps {
   api: AuthApi;
+  account?: AccountServiceApi;
   meta: DeviceMeta;
   createPkce(): Promise<Pkce>;
   /** Ouvre ASWebAuthenticationSession ; renvoie l'URL de rappel, ou null si annulé. */
@@ -126,6 +135,62 @@ export async function ssoLogin(deps: AuthDeps, state: SessionState, clubSlug: st
   return { kind: "signed-in", state: withClub(state, await toClubSession(deps, clubSlug, dto)), redirectPath: dto.redirectPath };
 }
 
+/** Un jeton d'accès qui expire dans moins d'une minute est rafraîchi. */
+export const ACCOUNT_REFRESH_MARGIN_MS = 60_000;
+
+function activePeopleOf(account: AccountDto): SessionPerson[] {
+  return account.people.filter((p) => p.status === "active").map((p) => ({ licencieId: p.licencieId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId }));
+}
+
+export interface AccountLoginResult {
+  state: SessionState;
+  /** Licenciés actifs du compte dans ce club (0 : rien à ouvrir encore). */
+  active: number;
+  /** Rattachements en attente de validation du club. */
+  pending: number;
+}
+
+/**
+ * Connexion par compte. Une session d'appareil `bmd_…` déjà présente pour ce
+ * club est reprise sur le compte (ses personnes passent sur le compte), puis
+ * révoquée. Sans licencié actif, l'état est rendu inchangé.
+ */
+export async function accountLogin(deps: AuthDeps, state: SessionState, clubSlug: string, dto: AccountSessionDto): Promise<AccountLoginResult> {
+  const api = deps.account;
+  if (!api) throw new Error("Comptes indisponibles");
+  const existing = state.clubs[clubSlug];
+  const legacy = existing && !existing.account ? existing : null;
+  let account = legacy ? await api.importDeviceSession(clubSlug, dto.accessToken, legacy.secret).catch(() => null) : null;
+  account ??= await api.get(clubSlug, dto.accessToken);
+  const people = activePeopleOf(account);
+  const pending = account.people.filter((p) => p.status === "pending").length;
+  if (people.length === 0) return { state, active: 0, pending };
+  if (legacy) await deps.api.logout(clubSlug, legacy.secret).catch(() => undefined);
+  const club = await deps.api.club(clubSlug).catch(() => null);
+  const keepActive = existing?.activeLicencieId && people.some((p) => p.licencieId === existing.activeLicencieId) ? existing.activeLicencieId : (people[0]?.licencieId ?? null);
+  const session: ClubSession = {
+    clubSlug,
+    clubName: club?.name ?? existing?.clubName ?? clubSlug,
+    accentColor: club?.accentColor ?? existing?.accentColor ?? null,
+    timezone: club?.timezone ?? existing?.timezone ?? "Europe/Paris",
+    secret: dto.accessToken,
+    account: { refreshToken: dto.refreshToken, expiresAt: dto.expiresAt, email: dto.user.email },
+    people,
+    activeLicencieId: keepActive,
+  };
+  closeSheetOnLinkLogin(deps);
+  return { state: withClub(state, session), active: people.length, pending };
+}
+
+/** Jeton d'accès du compte encore valable au moins une minute, sinon rafraîchi (401 si le compte n'existe plus). */
+export async function ensureFreshAccount(deps: AuthDeps, state: SessionState, clubSlug: string, now: number = Date.now()): Promise<SessionState> {
+  const session = state.clubs[clubSlug];
+  if (!session?.account || !deps.account) return state;
+  if (new Date(session.account.expiresAt).getTime() - now > ACCOUNT_REFRESH_MARGIN_MS) return state;
+  const fresh = await deps.account.refresh(session.account.refreshToken);
+  return withAccountTokens(state, clubSlug, fresh);
+}
+
 /**
  * Revalide chaque session. 401 → club oublié sur l'appareil (lien réinitialisé,
  * expiration). Hors ligne / 5xx → session gardée (l'app reste utilisable).
@@ -135,8 +200,16 @@ export async function refreshAll(deps: AuthDeps, state: SessionState): Promise<{
   const expiredClubs: string[] = [];
   for (const session of Object.values(state.clubs)) {
     try {
-      const info = await deps.api.session(session.clubSlug, session.secret);
-      next = withPeople(next, session.clubSlug, info.people);
+      let people: SessionPerson[];
+      if (session.account && deps.account) {
+        next = await ensureFreshAccount(deps, next, session.clubSlug);
+        people = activePeopleOf(await deps.account.get(session.clubSlug, next.clubs[session.clubSlug]!.secret));
+        // Plus aucun licencié suivi (rattachement retiré par le club) : comme une session refusée.
+        if (people.length === 0) throw new ApiError("unauthorized", "Ton compte ne suit plus personne dans ce club.", 401, "NO_LINKED_LICENCIE");
+      } else {
+        people = (await deps.api.session(session.clubSlug, session.secret)).people;
+      }
+      next = withPeople(next, session.clubSlug, people);
       const club = await deps.api.club(session.clubSlug).catch(() => null);
       if (club && next.clubs[session.clubSlug]) {
         next = { ...next, clubs: { ...next.clubs, [session.clubSlug]: { ...next.clubs[session.clubSlug]!, clubName: club.name, accentColor: club.accentColor, timezone: club.timezone } } };
@@ -156,7 +229,8 @@ export async function logout(deps: AuthDeps, state: SessionState, clubSlug: stri
   const session = state.clubs[clubSlug];
   if (session) {
     await beforeRevoke?.(session).catch(() => undefined);
-    await deps.api.logout(clubSlug, session.secret).catch(() => undefined);
+    // Compte : rien à révoquer côté serveur pour cet appareil (le jeton expire seul) ; session d'appareil : révoquée.
+    if (!session.account) await deps.api.logout(clubSlug, session.secret).catch(() => undefined);
   }
   return withoutClub(state, clubSlug);
 }

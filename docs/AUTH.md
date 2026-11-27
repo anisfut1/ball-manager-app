@@ -2,7 +2,20 @@
 
 Protocole **existant** de `ball-manager-back` (`docs/MOBILE_AUTH.md` du back). L'app n'en crée aucun autre.
 
-## Identité et session
+## Comptes utilisateurs (entrée principale)
+
+Chaque personne a **son propre compte** (email + mot de passe), géré par le back (`docs/ACCOUNTS.md` du back). Un compte peut suivre plusieurs licenciés, et un licencié peut être suivi par plusieurs comptes (parents, enfant).
+
+- Inscription : `POST /v1/account/sign-up` → code à 6 chiffres reçu par email → `/sign-up/verify` (renvoyer : `/sign-up/resend`). Connexion : `/v1/account/sign-in`. Mot de passe oublié : lien Supabase.
+- Rattachement : on cherche son nom (comme avant), puis `POST /account/links`. Actif tout de suite si une preuve existe (adresse vérifiée connue sur la fiche, ancienne session, invitation), sinon **en attente** de validation par un admin du club.
+- Session : `ClubSession.account = { refreshToken, expiresAt, email }` ; le secret est le JWT d'accès, envoyé en `Authorization: Bearer` + `X-BM-As`. Le middleware `refreshAuthorization` (`src/api/credentials.ts`) le rafraîchit avant expiration (marge 60 s, un seul rafraîchissement à la fois).
+- Passage à un compte : les sessions `bmd_…` de l'appareil sont importées comme preuves (`/account/links/device-session`), puis révoquées.
+- Profil → *Mon compte* : email, personnes suivies, **Inviter un proche** (lien `/invitation#code`, 7 jours, usage unique), **Ne plus suivre**.
+- Suppression : `DELETE /v1/public/clubs/{slug}/account` supprime le compte (la fiche sportive reste au club).
+
+Les entrées ci-dessous (session d'appareil) restent acceptées pendant la transition.
+
+## Identité et session (ancien modèle)
 
 Le licencié du lien personnel reste l'identité. L'app reçoit une **session d'appareil** (`bmd_…`, 180 jours glissants) par club, envoyée en `Authorization: Bearer` avec `X-BM-As: <licencieId>`. Le lien personnel n'est **jamais conservé** sur le téléphone ; la navigation ne dépend plus de `?token=`.
 
@@ -10,7 +23,7 @@ Le licencié du lien personnel reste l'identité. L'app reçoit une **session d'
 
 1. **Lien personnel** (Universal Link, `?token=`/`#token=`, ou collé) → `POST /auth/device-sessions`.
 2. **Lien de connexion à usage unique** (`/public/{slug}/connexion/code/{code}`) → `POST /auth/token`.
-3. **« Continuer avec Ball Manager »** : `ASWebAuthenticationSession` (`openAuthSessionAsync`) → page web déjà identifiée → code de 5 min à usage unique lié au PKCE S256 + `state` → rappel `ballmanager://…` → `POST /auth/token` avec `codeVerifier`.
+3. ~~**« Continuer avec Ball Manager »**~~ (retiré de l'écran de connexion, remplacé par le compte) : `ASWebAuthenticationSession` (`openAuthSessionAsync`) → page web déjà identifiée → code de 5 min à usage unique lié au PKCE S256 + `state` → rappel `ballmanager://…` → `POST /auth/token` avec `codeVerifier`.
 
 PKCE : S256 seul, `state` vérifié, code à usage unique, expiration côté serveur. Annulation par l'utilisateur ≠ erreur.
 
@@ -41,4 +54,4 @@ Profil → *Compte* → **Supprimer mon compte** → confirmation → **Supprime
 - Tous supprimés : retour à l'accueil non connecté, message « Ton compte a été supprimé. » (`src/auth/account-deleted-notice.ts`).
 - Le `401` de cette route ne passe **pas** par le flux global « session invalide » (`call(null, …)`) : pas de double navigation ni d'écran « session expirée ».
 
-La fiche sportive reste au club. Ne jamais supprimer le licencié du compte de revue Apple pendant les tests. Pas de Sign in with Apple ni de login social (SSO Ball Manager + lien).
+La fiche sportive reste au club. Ne jamais supprimer le licencié du compte de revue Apple pendant les tests. Pas de Sign in with Apple ni de login social : email + mot de passe uniquement (guideline 4.8 non concernée).

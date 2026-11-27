@@ -61,6 +61,17 @@ export function LicensedLinkPending({ firstName, onBack }: { firstName: string; 
   );
 }
 
+/** Compte : rattachement en attente d'un responsable du club. */
+export function LicensedAccountPending({ firstName, onBack }: { firstName: string; onBack: () => void }) {
+  return (
+    <Panel mark={<StatusMark tone="info" icon="hourglass-outline" />} title="Demande transmise au club" backLabel="Revenir à la recherche" onBack={onBack}>
+      <AppText variant="callout" tone="muted" style={styles.center}>
+        Ton compte est prêt. Pour protéger le profil de {firstName}, un responsable du club valide le rattachement. Reconnecte-toi dès qu&apos;il a accepté.
+      </AppText>
+    </Panel>
+  );
+}
+
 export function LicensedRequestSent({ onBack }: { onBack: () => void }) {
   return (
     <Panel mark={<StatusMark tone="success" icon="paper-plane-outline" />} title="Demande envoyée au club" backLabel="Revenir à la recherche" onBack={onBack}>

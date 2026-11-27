@@ -17,6 +17,8 @@ export type Destination =
   | { kind: "bootstrap"; clubSlug: string; token: string; then: AppRoute }
   /** Lien de connexion à usage unique. */
   | { kind: "login-code"; clubSlug: string; code: string }
+  /** Invitation d'un proche (`/public/{slug}/invitation#<code>`) : connexion ou création de compte, puis rattachement. */
+  | { kind: "invitation"; clubSlug: string; code: string }
   /** Fonction web uniquement : ouverte dans le navigateur, assumé comme tel. */
   | { kind: "web-only"; url: string; reason: string }
   | { kind: "home" }
@@ -77,6 +79,10 @@ export function resolveLegacyPath(url: NormalizedUrl): Destination {
     if (!slug || !SLUG.test(slug)) return { kind: "home" };
     const [section, a, b] = rest;
     if (section === "connexion" && a === "code" && b && /^[A-Za-z0-9_-]{20,128}$/.test(b)) return { kind: "login-code", clubSlug: slug, code: b };
+    if (section === "invitation") {
+      const code = url.hash;
+      return /^[A-Za-z0-9_-]{16,64}$/.test(code) ? { kind: "invitation", clubSlug: slug, code } : { kind: "route", clubSlug: slug, route: club(slug) };
+    }
     // Routes techniques du site (exclues de l'AASA) : jamais un écran.
     if (section === "session" || section === "auth" || section === "manifest.webmanifest") return { kind: "route", clubSlug: slug, route: club(slug) };
     const route = publicRoute(slug, rest, url);

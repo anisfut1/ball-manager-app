@@ -8,9 +8,14 @@ import { AppText, Avatar, Banner, Button, Skeleton, TextField, type BannerTone }
 import { colors, MAX_FONT_SCALE, radius, shadows, spacing, typography } from "@/design";
 import { useClubAccent } from "@/design/ClubTheme";
 import { NAME_SEARCH_DEBOUNCE_MS, searchableNameQuery } from "@/features/identify/name-query";
-import { LicensedLinkPending, LicensedLinkSent, LicensedRequestSent } from "./LicensedAccessSuccess";
+import { router } from "expo-router";
+import { accountApi, type AccountSessionDto } from "@/api/endpoints/account";
+import { useSession } from "@/auth/SessionProvider";
+import { AccountAuthForm } from "@/features/accounts/AccountAuthForm";
+import { destinationAfterLogin } from "@/navigation/after-login";
+import { LicensedAccountPending, LicensedRequestSent } from "./LicensedAccessSuccess";
 
-type Step = { kind: "search" } | { kind: "confirm"; licencie: LicencieMatch; needsEmail: boolean } | { kind: "sent"; firstName: string; maskedEmail: string } | { kind: "pending"; firstName: string } | { kind: "request" } | { kind: "request-sent" };
+type Step = { kind: "search" } | { kind: "confirm"; licencie: LicencieMatch } | { kind: "pending"; firstName: string } | { kind: "request" } | { kind: "request-sent" };
 
 const displayName = (l: LicencieMatch) => `${l.firstName} ${l.lastInitial}.`;
 
@@ -23,13 +28,16 @@ function searchErrorMessage(error: unknown): string {
 /**
  * Cœur de l'accès licencié (mêmes règles que le web) : prénom + nom, au fil
  * de la frappe (une requête par nom stable, limite serveur 30/min) → au plus
- * 5 fiches (prénom + initiale) → lien envoyé à l'adresse connue du club
- * (masquée). Le lien n'est JAMAIS affiché ici.
+ * 5 fiches (prénom + initiale) → connexion ou création de compte (email +
+ * mot de passe) → rattachement : actif si l'adresse vérifiée est connue du
+ * club, sinon validé par un responsable. Chaque parent a son propre compte.
  *
  * `variant="bare"` : sans carte (feuille « Ajouter un enfant »).
  */
 export function LicensedSearchCard({ clubSlug, variant = "card", autoFocus = true }: { clubSlug: string; variant?: "card" | "bare"; autoFocus?: boolean }) {
   const accent = useClubAccent();
+  const session = useSession();
+  const accountSession = session.state.clubs[clubSlug]?.account ? session.state.clubs[clubSlug] : null;
   const [step, setStep] = useState<Step>({ kind: "search" });
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -60,21 +68,30 @@ export function LicensedSearchCard({ clubSlug, variant = "card", autoFocus = tru
     };
   }, [clubSlug, searchable, key]);
 
-  async function send(current: Extract<Step, { kind: "confirm" }>) {
+  /** Rattache le licencié au compte, puis ouvre le club si au moins un licencié est actif. */
+  async function link(licencie: LicencieMatch, dto: AccountSessionDto | null) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await identifyApi.requestLink(clubSlug, current.licencie.id, { email: current.needsEmail ? email.trim() : null });
+      const accessToken = dto?.accessToken ?? (await session.accountToken(clubSlug));
+      if (!accessToken) throw new ApiError("unauthorized", "Session expirée : reconnecte-toi.", 401, "SESSION_EXPIRED");
+      const result = await accountApi.link(clubSlug, accessToken, licencie.id);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      if (result.pendingApproval || !result.maskedEmail) setStep({ kind: "pending", firstName: current.licencie.firstName });
-      else setStep({ kind: "sent", firstName: current.licencie.firstName, maskedEmail: result.maskedEmail });
-    } catch (error) {
-      if (error instanceof ApiError && error.code === "EMAIL_REQUIRED") {
-        if (current.needsEmail) setFeedback({ tone: "danger", text: error.message });
-        setStep({ ...current, needsEmail: true });
-      } else {
-        setFeedback({ tone: error instanceof ApiError && error.code === "LINK_RECENTLY_SENT" ? "info" : "danger", text: humanMessage(error) });
+      if (dto) {
+        const opened = await session.accountLogin(clubSlug, dto);
+        if (opened.active > 0 && result.status === "active") {
+          router.replace(destinationAfterLogin(clubSlug, null));
+          return;
+        }
+      } else if (result.status === "active") {
+        await session.refresh();
+        router.replace(destinationAfterLogin(clubSlug, null));
+        return;
       }
+      if (result.status !== "active") setStep({ kind: "pending", firstName: licencie.firstName });
+      else router.replace(destinationAfterLogin(clubSlug, null));
+    } catch (error) {
+      setFeedback({ tone: "danger", text: humanMessage(error) });
     } finally {
       setBusy(false);
     }
@@ -100,8 +117,7 @@ export function LicensedSearchCard({ clubSlug, variant = "card", autoFocus = tru
   const banner = feedback ? <Banner tone={feedback.tone} message={feedback.text} /> : null;
 
   let body;
-  if (step.kind === "sent") body = <LicensedLinkSent firstName={step.firstName} maskedEmail={step.maskedEmail} onBack={back} />;
-  else if (step.kind === "pending") body = <LicensedLinkPending firstName={step.firstName} onBack={back} />;
+  if (step.kind === "pending") body = <LicensedAccountPending firstName={step.firstName} onBack={back} />;
   else if (step.kind === "request-sent") body = <LicensedRequestSent onBack={back} />;
   else if (step.kind === "confirm") {
     body = (
@@ -113,15 +129,20 @@ export function LicensedSearchCard({ clubSlug, variant = "card", autoFocus = tru
             {displayName(step.licencie)}
           </AppText>
         </View>
-        {step.needsEmail ? (
-          <TextField label="Ton adresse email" hint="Ton lien y sera envoyé après vérification par le club." value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" autoFocus />
+        {accountSession ? (
+          <>
+            <AppText variant="callout" tone="muted">
+              Connecté avec {accountSession.account?.email ?? "ton compte"}. Ajoute {step.licencie.firstName} à ton compte (toi-même ou ton enfant).
+            </AppText>
+            {banner}
+            <Button label={`Ajouter ${step.licencie.firstName} à mon compte`} size="lg" loading={busy} icon={<Ionicons name="link-outline" size={20} color={accent.ink} />} onPress={() => void link(step.licencie, null)} fullWidth />
+          </>
         ) : (
-          <AppText variant="callout" tone="muted">
-            On t&apos;envoie un lien sécurisé à l&apos;adresse enregistrée auprès du club. Un geste suffit, sans mot de passe.
-          </AppText>
+          <>
+            <AccountAuthForm intro={`Connecte-toi ou crée ton compte pour suivre ${step.licencie.firstName}. Parents : chacun peut avoir son propre compte.`} onAuthenticated={(dto) => link(step.licencie, dto)} />
+            {banner}
+          </>
         )}
-        {banner}
-        <Button label={step.needsEmail ? "Envoyer mon lien" : "Recevoir mon lien sécurisé"} size="lg" loading={busy} disabled={step.needsEmail && !email.trim()} icon={<Ionicons name="mail-outline" size={20} color={accent.ink} />} onPress={() => void send(step)} fullWidth />
       </View>
     );
   } else if (step.kind === "request") {
@@ -202,7 +223,7 @@ export function LicensedSearchCard({ clubSlug, variant = "card", autoFocus = tru
                 {results.length > 1 ? `${results.length} licenciés correspondent — lequel es-tu ?` : "Est-ce toi ?"}
               </AppText>
               {results.map((l) => (
-                <ResultRow key={l.id} licencie={l} onPress={() => setStep({ kind: "confirm", licencie: l, needsEmail: false })} />
+                <ResultRow key={l.id} licencie={l} onPress={() => setStep({ kind: "confirm", licencie: l })} />
               ))}
               <Pressable accessibilityRole="button" onPress={() => setStep({ kind: "request" })} hitSlop={spacing.sm}>
                 <AppText variant="meta" tone="muted" style={styles.link}>
