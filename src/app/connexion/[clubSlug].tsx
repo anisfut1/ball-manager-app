@@ -11,14 +11,13 @@ import { ClubThemeProvider } from "@/design/ClubTheme";
 import { LicensedAccessGate } from "@/features/licensed-access/LicensedAccessGate";
 import { LicensedBackdrop } from "@/features/licensed-access/LicensedBackdrop";
 import { moduleForRoute } from "@/features/licensed-access/modules";
-import { SsoContinue } from "@/features/licensed-access/SsoContinue";
 import { peekPendingDestination } from "@/linking/pendingDestination";
 import { colors, spacing } from "@/design";
 
 /**
  * Connexion à un club = l'accès réservé aux licenciés (porte commune à tous
  * les modules, contexte d'après la page demandée) : on se retrouve par son
- * nom (lien par email), ou en un geste si déjà connecté au site dans Safari.
+ * nom, puis connexion ou création de compte (email + mot de passe).
  */
 export default function ClubLoginScreen() {
   const { clubSlug = "" } = useLocalSearchParams<{ clubSlug: string }>();
@@ -41,7 +40,6 @@ export default function ClubLoginScreen() {
         <Button label="Retour" variant="ghost" icon={<Ionicons name="chevron-back" size={18} color={colors.muted} />} onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.back} />
         {pending?.clubSlug === clubSlug ? <Banner tone="info" message="Après la connexion, tu arriveras directement sur la page demandée." /> : null}
         <LicensedAccessGate module={moduleForRoute(pending?.clubSlug === clubSlug ? pending.route : null)} clubSlug={clubSlug} clubName={name} logoUrl={club.data?.logoUrl ?? null} accentColor={club.data?.accentColor} />
-        <SsoContinue clubSlug={clubSlug} />
       </Screen>
     </ClubThemeProvider>
   );

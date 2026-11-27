@@ -4,6 +4,7 @@ import * as Application from "expo-application";
 import * as WebBrowser from "expo-web-browser";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/endpoints/auth";
+import { accountApi, type AccountSessionDto } from "@/api/endpoints/account";
 import { setCredentialSource } from "@/api/credentials";
 import { env } from "@/config/env";
 import { clearPendingDestination } from "@/linking/pendingDestination";
@@ -23,6 +24,7 @@ const refusedRepository = createRefusedClubsRepository(secureStorage);
 
 const deps: service.AuthDeps = {
   api: authApi,
+  account: accountApi,
   meta: { appVersion: Application.nativeApplicationVersion ?? undefined, deviceLabel: "iPhone" },
   createPkce: () => createPkce(),
   openAuthSession: async (url, callback) => {
@@ -49,6 +51,10 @@ export interface SessionContextValue {
   /** L'identification du club refusé est à l'écran : il ne faut plus y renvoyer. */
   acknowledgeRedirect(): void;
   bootstrapFromToken(clubSlug: string, token: string): Promise<void>;
+  /** Connexion par compte (email + mot de passe) : ouvre le club si le compte y suit au moins un licencié. */
+  accountLogin(clubSlug: string, dto: AccountSessionDto): Promise<{ active: number; pending: number }>;
+  /** Jeton d'accès du compte pour ce club (rafraîchi si besoin), ou null. */
+  accountToken(clubSlug: string): Promise<string | null>;
   loginWithCode(clubSlug: string, code: string): Promise<string | null>;
   ssoLogin(clubSlug: string, redirectPath?: string | null): Promise<SsoOutcome>;
   logout(clubSlug: string): Promise<void>;
@@ -77,6 +83,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // La liste n'est écrite qu'une fois relue (sinon le démarrage écraserait la liste persistée).
   const refusalLoaded = useRef(false);
   const deletion = useRef<Promise<service.DeleteAccountOutcome> | null>(null);
+  // Un seul rafraîchissement de jeton de compte à la fois par club.
+  const refreshing = useRef(new Map<string, Promise<string | null>>());
 
   const persist = useCallback(async (next: SessionState) => {
     stateRef.current = next;
@@ -160,10 +168,35 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (refusalLoaded.current) void refusedRepository.save(refusal.clubs).catch(() => undefined);
   }, [refusal.clubs]);
 
+  /** Jeton de compte frais pour ce club (single-flight) ; persiste le nouveau jeton. */
+  const freshSecretFor = useCallback(
+    (slug: string): Promise<string | null> => {
+      const session = stateRef.current.clubs[slug];
+      if (!session?.account) return Promise.resolve(null);
+      const inflight = refreshing.current.get(slug);
+      if (inflight) return inflight;
+      const run = (async () => {
+        const before = stateRef.current;
+        const next = await service.ensureFreshAccount(deps, before, slug);
+        if (next !== before) {
+          await persist(next);
+          dispatch({ type: "UPDATED", state: next });
+        }
+        return next.clubs[slug]?.secret ?? null;
+      })()
+        .catch(() => null)
+        .finally(() => refreshing.current.delete(slug));
+      refreshing.current.set(slug, run);
+      return run;
+    },
+    [persist],
+  );
+
   // Le client API lit le secret ici ; un 401 « session invalide » retire le club.
   useEffect(() => {
     setCredentialSource({
       secretFor: (slug) => stateRef.current.clubs[slug]?.secret ?? null,
+      freshSecretFor,
       onSessionInvalid: (slug) => {
         const refused = stateRef.current.clubs[slug];
         if (!refused) return;
@@ -176,7 +209,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
     });
     return () => setCredentialSource(null);
-  }, [persist, queryClient]);
+  }, [persist, queryClient, freshSecretFor]);
 
   /** Partie LOCALE du retrait d'un club (aucun appel serveur) : trousseau, cache, destination en attente. */
   const clearClubLocally = useCallback(
@@ -217,6 +250,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       async bootstrapFromToken(clubSlug, token) {
         await signIn(await service.bootstrapFromToken(deps, stateRef.current, clubSlug, token), clubSlug);
       },
+      async accountLogin(clubSlug, dto) {
+        const result = await service.accountLogin(deps, stateRef.current, clubSlug, dto);
+        if (result.active > 0) await signIn(result.state, clubSlug);
+        return { active: result.active, pending: result.pending };
+      },
+      accountToken: freshSecretFor,
       async loginWithCode(clubSlug, code) {
         const result = await service.loginWithCode(deps, stateRef.current, clubSlug, code);
         await signIn(result.state, clubSlug);
@@ -239,7 +278,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // Double appui : la séquence en cours est renvoyée, jamais relancée.
         if (deletion.current) return deletion.current;
         const run = (async () => {
-          const outcome = await service.deleteAccount(authApi, stateRef.current, async (next, clubSlug) => {
+          // Compte : DELETE …/account ; session d'appareil : DELETE …/auth/me.
+          const api: service.DeleteAccountApi = {
+            deleteAccount: (slug, secret) => (stateRef.current.clubs[slug]?.account ? accountApi.deleteAccount(slug, secret) : authApi.deleteAccount(slug, secret)),
+          };
+          const outcome = await service.deleteAccount(api, stateRef.current, async (next, clubSlug) => {
             forgetPushRegistration(clubSlug);
             await clearClubLocally(next, clubSlug);
           });
@@ -272,7 +315,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "UPDATED", state: next });
       },
     };
-  }, [machine, refusal.clubs, clearClubLocally, persist, queryClient, refresh, signIn]);
+  }, [machine, refusal.clubs, clearClubLocally, persist, queryClient, refresh, signIn, freshSecretFor]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

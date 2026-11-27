@@ -5,19 +5,24 @@ import { z } from "zod";
  * est une preuve DÉRIVÉE du lien personnel ; le lien personnel lui-même
  * n'est jamais conservé sur le téléphone.
  */
+/** Compte (email + mot de passe, docs/ACCOUNTS.md du back) : le secret est alors le jeton d'accès, rafraîchi avant expiration. */
+const AccountSchema = z.object({ refreshToken: z.string().min(1), expiresAt: z.string(), email: z.string().nullable() });
 const PersonSchema = z.object({ licencieId: z.string().min(1), firstName: z.string(), lastName: z.string(), teamId: z.string().nullable() });
 const ClubSessionSchema = z.object({
   clubSlug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
   clubName: z.string(),
   accentColor: z.string().nullable().default(null),
   timezone: z.string().default("Europe/Paris"),
-  secret: z.string().regex(/^bmd_[A-Za-z0-9_-]{20,}$/),
+  // Session d'appareil `bmd_…` (avant les comptes) ou jeton d'accès du compte (JWT).
+  secret: z.string().regex(/^(bmd_[A-Za-z0-9_-]{20,}|[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/),
+  account: AccountSchema.nullish(),
   people: z.array(PersonSchema),
   activeLicencieId: z.string().nullable(),
 });
 const StateSchema = z.object({ v: z.literal(1), active: z.string().nullable(), clubs: z.record(z.string(), ClubSessionSchema) });
 
 export type SessionPerson = z.infer<typeof PersonSchema>;
+export type AccountCredentials = z.infer<typeof AccountSchema>;
 export type ClubSession = z.infer<typeof ClubSessionSchema>;
 export type SessionState = z.infer<typeof StateSchema>;
 
@@ -76,6 +81,17 @@ export function withActivePerson(state: SessionState, clubSlug: string, licencie
   const session = state.clubs[clubSlug];
   if (!session || !session.people.some((p) => p.licencieId === licencieId)) return state;
   return { ...state, clubs: { ...state.clubs, [clubSlug]: { ...session, activeLicencieId: licencieId } } };
+}
+
+export function isAccountSession(session: ClubSession): boolean {
+  return Boolean(session.account);
+}
+
+/** Nouveau jeton d'accès du compte (rafraîchissement), sans toucher au reste. */
+export function withAccountTokens(state: SessionState, clubSlug: string, tokens: { accessToken: string; refreshToken: string; expiresAt: string }): SessionState {
+  const session = state.clubs[clubSlug];
+  if (!session?.account) return state;
+  return { ...state, clubs: { ...state.clubs, [clubSlug]: { ...session, secret: tokens.accessToken, account: { ...session.account, refreshToken: tokens.refreshToken, expiresAt: tokens.expiresAt } } } };
 }
 
 export function withActiveClub(state: SessionState, clubSlug: string): SessionState {

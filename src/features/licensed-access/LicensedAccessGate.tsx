@@ -7,9 +7,10 @@ import { useClubAccent } from "@/design/ClubTheme";
 import { ClubBadge } from "@/features/onboarding/ClubBadge";
 import { Floating } from "./LicensedBackdrop";
 import { LicensedSearchCard } from "./LicensedSearchCard";
+import { AccountSignIn } from "@/features/accounts/AccountSignIn";
 import { licensedAccessModules, type LicensedAccessModuleId } from "./modules";
 
-const STEPS = ["Retrouve ton nom", "Reçois ton lien sécurisé", "Accède à ton espace"];
+const STEPS = ["Retrouve ton nom", "Crée ton compte (ou connecte-toi)", "Accède à ton espace"];
 
 /**
  * Porte d'entrée commune des espaces réservés aux licenciés (même
@@ -59,11 +60,12 @@ export function LicensedAccessGate({ module, clubSlug, clubName, logoUrl, accent
       </View>
 
       <LicensedSearchCard clubSlug={clubSlug} />
+      <AccountSignIn clubSlug={clubSlug} />
 
       <View style={styles.remembered}>
         <Ionicons name="checkmark-circle" size={16} color={colors.success} />
         <AppText variant="meta" tone="muted" style={styles.flexShrink}>
-          Connexion mémorisée ensuite sur ce téléphone, sans mot de passe.
+          Un compte par personne : chaque parent peut avoir le sien. Connexion mémorisée sur ce téléphone.
         </AppText>
       </View>
 

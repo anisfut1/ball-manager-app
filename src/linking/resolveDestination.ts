@@ -20,6 +20,8 @@ export function internalPathFor(destination: Destination): string | null {
       return `/lien?${new URLSearchParams({ club: destination.clubSlug, token: destination.token, next: destination.then }).toString()}`;
     case "login-code":
       return `/code?${new URLSearchParams({ club: destination.clubSlug, code: destination.code }).toString()}`;
+    case "invitation":
+      return `/invitation?${new URLSearchParams({ club: destination.clubSlug, code: destination.code }).toString()}`;
     case "web-only":
       return `/web?${new URLSearchParams({ url: destination.url, reason: destination.reason }).toString()}`;
     case "home":

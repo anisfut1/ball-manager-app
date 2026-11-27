@@ -20,7 +20,8 @@ export class ApiError extends Error {
 
   /** La session de cet appareil n'est plus valable (lien réinitialisé, déconnexion ailleurs, expiration). */
   get sessionExpired(): boolean {
-    return this.status === 401 && (this.code === "SESSION_INVALID" || this.code === "SESSION_REQUIRED");
+    // SESSION_EXPIRED : jeton de compte refusé même après rafraîchissement (compte supprimé ailleurs, mot de passe changé).
+    return this.status === 401 && (this.code === "SESSION_INVALID" || this.code === "SESSION_REQUIRED" || this.code === "SESSION_EXPIRED");
   }
 
   /** Le lien personnel a dépassé ses 7 jours : en redemander un (jamais une session expirée). */

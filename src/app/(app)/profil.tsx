@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import * as Application from "expo-application";
 import * as WebBrowser from "expo-web-browser";
-import { authApi } from "@/api/endpoints/auth";
 import { humanMessage } from "@/api/errors";
 import { useActiveClub, useSession } from "@/auth/SessionProvider";
 import { useCurrentClubState } from "@/club/CurrentClubProvider";
@@ -12,10 +11,11 @@ import { AppText, Avatar, Badge, Banner, Button, Card, ListRow, Screen, SectionH
 import { colors } from "@/design";
 import { env } from "@/config/env";
 import { DeleteAccountSection } from "@/features/account/DeleteAccountSection";
+import { AccountSection } from "@/features/accounts/AccountSection";
 import { ClubHeader } from "@/features/home/ClubHeader";
 import { useRoles } from "@/features/roles/useRoles";
 import { useAdminSession } from "@/features/admin/useAdminSession";
-import { enablePush, pushPermission, type PushPermission } from "@/push/registration";
+import { enablePush, pushPermission, sendPushTest, type PushPermission } from "@/push/registration";
 
 /** Libellés des rôles fusionnés : l'utilisateur voit ce qu'il peut faire, pas un « mode » à choisir. */
 function roleLabels(roles: ReturnType<typeof useRoles>["roles"]): string[] {
@@ -66,11 +66,11 @@ export default function ProfileScreen() {
     if (!session) return;
     setTest({ busy: true, tone: "info", message: "Envoi en cours…" });
     try {
-      let result = await authApi.pushTest(club.clubSlug, session.secret);
+      let result = await sendPushTest(session);
       if (result.status === "no_token") {
         // Jeton pas encore enregistré pour ce club : on le (ré)enregistre puis on réessaie une fois.
         await enablePush(Object.values(state.clubs));
-        result = await authApi.pushTest(club.clubSlug, session.secret);
+        result = await sendPushTest(state.clubs[club.clubSlug] ?? session);
       }
       const messages: Record<typeof result.status, { tone: BannerTone; message: string }> = {
         sent: { tone: "success", message: "Notification envoyée : elle doit arriver sur cet iPhone dans quelques secondes." },
@@ -112,6 +112,8 @@ export default function ProfileScreen() {
           />
         </Card>
       ) : null}
+
+      <AccountSection club={club} />
 
       {labels.length ? (
         <>

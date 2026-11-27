@@ -2,7 +2,7 @@ import createClient from "openapi-fetch";
 import { requireApiUrl } from "@/config/env";
 import type { paths } from "./generated/schema";
 import { ApiError, apiErrorFrom, networkError } from "./errors";
-import { credentialHeaders, reportSessionInvalid } from "./credentials";
+import { credentialHeaders, refreshAuthorization, reportSessionInvalid } from "./credentials";
 
 /**
  * Client UNIQUE vers ball-manager-back, typé par le contrat OpenAPI généré
@@ -35,6 +35,13 @@ function timeoutFetch(timeoutMs: number) {
 
 type Client = ReturnType<typeof createClient<paths>>;
 
+/** Client typé + rafraîchissement du jeton de compte avant chaque requête (voir credentials.ts). */
+function makeClient(timeoutMs: number): Client {
+  const created = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(timeoutMs) });
+  created.use({ onRequest: ({ request }) => refreshAuthorization(request) });
+  return created;
+}
+
 let client: Client | null = null;
 let fbiWriteClient: Client | null = null;
 let adminLongClient: Client | null = null;
@@ -42,21 +49,21 @@ let testClient: Client | null = null;
 
 export function api() {
   if (testClient) return testClient;
-  if (!client) client = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(REQUEST_TIMEOUT_MS) });
+  if (!client) client = makeClient(REQUEST_TIMEOUT_MS);
   return client;
 }
 
 /** Même API, délai long : écritures sur FBI uniquement. */
 export function fbiWriteApi() {
   if (testClient) return testClient;
-  if (!fbiWriteClient) fbiWriteClient = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(FBI_WRITE_TIMEOUT_MS) });
+  if (!fbiWriteClient) fbiWriteClient = makeClient(FBI_WRITE_TIMEOUT_MS);
   return fbiWriteClient;
 }
 
 /** Même API, délai de 280 s : opérations d'administration longues (FFBB, FBI). */
 export function adminLongApi() {
   if (testClient) return testClient;
-  if (!adminLongClient) adminLongClient = createClient<paths>({ baseUrl: requireApiUrl(), fetch: timeoutFetch(ADMIN_LONG_TIMEOUT_MS) });
+  if (!adminLongClient) adminLongClient = makeClient(ADMIN_LONG_TIMEOUT_MS);
   return adminLongClient;
 }
 

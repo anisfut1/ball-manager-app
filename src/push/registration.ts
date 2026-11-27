@@ -2,6 +2,7 @@ import * as Application from "expo-application";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { authApi } from "@/api/endpoints/auth";
+import { accountApi } from "@/api/endpoints/account";
 import type { ClubSession } from "@/auth/session-model";
 import { currentApnsEnvironment, type ApnsEnvironment } from "./apns-environment";
 
@@ -30,7 +31,10 @@ export function registrationKey(token: string, environment: ApnsEnvironment): st
 async function sendToken(session: ClubSession, token: string, environment: ApnsEnvironment): Promise<void> {
   const key = registrationKey(token, environment);
   if (registered.get(session.clubSlug) === key) return;
-  await authApi.registerPushToken(session.clubSlug, session.secret, { token, environment, appVersion: Application.nativeApplicationVersion ?? undefined });
+  const body = { token, environment, appVersion: Application.nativeApplicationVersion ?? undefined };
+  // Compte : jeton rattaché au compte (les autres comptes de la famille ont le leur) ; sinon à la session d'appareil.
+  if (session.account) await accountApi.registerPushToken(session.clubSlug, session.secret, body);
+  else await authApi.registerPushToken(session.clubSlug, session.secret, body);
   registered.set(session.clubSlug, key);
 }
 
@@ -68,8 +72,28 @@ export function forgetPushRegistration(clubSlug: string): void {
 
 /** Plus de notifications de ce club sur cet appareil (déconnexion, ou choix dans le profil). */
 export async function detachPush(session: ClubSession): Promise<void> {
+  const token = registeredToken(session.clubSlug);
   forgetPushRegistration(session.clubSlug);
+  if (session.account) {
+    const current = token ?? (await Notifications.getDevicePushTokenAsync().catch(() => null))?.data;
+    if (typeof current === "string") await accountApi.removePushToken(session.clubSlug, session.secret, current).catch(() => undefined);
+    return;
+  }
   await authApi.removePushToken(session.clubSlug, session.secret).catch(() => undefined);
+}
+
+/** Jeton APNs déjà envoyé pour ce club (null si aucun). */
+export function registeredToken(clubSlug: string): string | null {
+  const key = registered.get(clubSlug);
+  return key ? key.slice(key.indexOf(":") + 1) : null;
+}
+
+/** Notification de test vers CET iPhone (compte : le jeton de l'appareil est nécessaire). */
+export async function sendPushTest(session: ClubSession) {
+  if (!session.account) return authApi.pushTest(session.clubSlug, session.secret);
+  const token = registeredToken(session.clubSlug) ?? (await Notifications.getDevicePushTokenAsync().catch(() => null))?.data;
+  if (typeof token !== "string") return { status: "no_token" as const, reason: null };
+  return accountApi.pushTest(session.clubSlug, session.secret, token);
 }
 
 /** Réservé aux tests. */
