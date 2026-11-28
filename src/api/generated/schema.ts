@@ -14286,7 +14286,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Comptes liés aux licenciés (file « Demandes de rattachement » avec status=pending) */
+                /** @description Comptes liés aux licenciés du club */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -14501,7 +14501,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Lien retiré */
+                /** @description Rattachement retiré (bloqué) */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -14537,6 +14537,72 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/clubs/{clubId}/account-links/{linkId}/remove-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID ou slug du club */
+                    clubId: string;
+                    linkId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Compte retiré du club (supprimé s'il ne suit plus personne ailleurs) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RemoveAccountFromClubResultDto"];
+                    };
+                };
+                /** @description Non authentifié */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Accès refusé */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Introuvable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -15109,6 +15175,7 @@ export interface components {
         PasswordResetDto: {
             /** Format: email */
             email: string;
+            clubSlug?: string;
         };
         TableLeaderboardDto: {
             seasonStart: string;
@@ -16319,10 +16386,12 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+            clubSlug?: string;
         };
         ResendCodeDto: {
             /** Format: email */
             email: string;
+            clubSlug?: string;
         };
         AccountSessionDto: {
             accessToken: string;
@@ -16408,6 +16477,9 @@ export interface components {
             /** @enum {string} */
             source: "email_match" | "personal_link" | "device_session" | "invite" | "admin" | "request";
             createdAt: string;
+        };
+        RemoveAccountFromClubResultDto: {
+            accountDeleted: boolean;
         };
     };
     responses: never;

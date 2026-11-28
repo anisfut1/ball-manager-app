@@ -50,7 +50,7 @@ export default function InvitationScreen() {
             <Button label="Accepter l'invitation" size="lg" loading={busy} onPress={() => void accept(null)} fullWidth />
           </>
         ) : (
-          <AccountAuthForm intro="Crée ton compte (ou connecte-toi) pour accepter l'invitation." onAuthenticated={(dto) => accept(dto)} />
+          <AccountAuthForm clubSlug={club || undefined} intro="Crée ton compte (ou connecte-toi) pour accepter l'invitation." onAuthenticated={(dto) => accept(dto)} />
         )}
         {error ? <Banner tone="danger" message={error} /> : null}
       </Card>

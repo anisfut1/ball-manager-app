@@ -17,12 +17,13 @@ const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
 const path = (clubSlug: string) => ({ params: { path: { clubSlug } } });
 
 export const accountApi = {
-  signUp: (email: string, password: string) => call(null, () => api().POST("/v1/account/sign-up", { body: { email, password } })),
-  resendCode: (email: string) => call(null, () => api().POST("/v1/account/sign-up/resend", { body: { email } })),
+  // `clubSlug` : les liens des emails ramènent à l'espace de ce club, pas au login général.
+  signUp: (email: string, password: string, clubSlug?: string) => call(null, () => api().POST("/v1/account/sign-up", { body: { email, password, clubSlug } })),
+  resendCode: (email: string, clubSlug?: string) => call(null, () => api().POST("/v1/account/sign-up/resend", { body: { email, clubSlug } })),
   verify: (email: string, code: string, password: string) => call(null, () => api().POST("/v1/account/sign-up/verify", { body: { email, code, password } })) as Promise<AccountSessionDto>,
   signIn: (email: string, password: string) => call(null, () => api().POST("/v1/account/sign-in", { body: { email, password } })) as Promise<AccountSessionDto>,
   refresh: (refreshToken: string) => call(null, () => api().POST("/v1/account/refresh", { body: { refreshToken } })) as Promise<AccountSessionDto>,
-  passwordReset: (email: string) => call(null, () => api().POST("/v1/account/password-reset", { body: { email } })),
+  passwordReset: (email: string, clubSlug?: string) => call(null, () => api().POST("/v1/account/password-reset", { body: { email, clubSlug } })),
 
   get: (clubSlug: string, accessToken: string) => call(null, () => api().GET("/v1/public/clubs/{clubSlug}/account", { ...path(clubSlug), headers: bearer(accessToken) })) as Promise<AccountDto>,
   link: (clubSlug: string, accessToken: string, licencieId: string) =>
