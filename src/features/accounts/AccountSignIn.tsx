@@ -13,7 +13,7 @@ export function AccountSignIn({ clubSlug }: { clubSlug: string }) {
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (!open) return <Button label="Déjà un compte ? Se connecter" variant="ghost" onPress={() => setOpen(true)} />;
+  if (!open) return <Button label="Déjà un compte ? Se connecter" variant="secondary" onPress={() => setOpen(true)} />;
 
   return (
     <Card style={styles.card}>
