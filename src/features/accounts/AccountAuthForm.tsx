@@ -15,7 +15,7 @@ type Step = AccountAuthMode | "code" | "forgot" | "forgot-sent";
  * le site. Création : un code à 6 chiffres arrive par email. Le mot de passe
  * n'est jamais gardé : seule la session (jetons) l'est, dans le trousseau.
  */
-export function AccountAuthForm({ initialMode = "sign-up", intro, onAuthenticated }: { initialMode?: AccountAuthMode; intro?: string; onAuthenticated: (session: AccountSessionDto) => Promise<void> }) {
+export function AccountAuthForm({ clubSlug, initialMode = "sign-up", intro, onAuthenticated }: { clubSlug?: string; initialMode?: AccountAuthMode; intro?: string; onAuthenticated: (session: AccountSessionDto) => Promise<void> }) {
   const accent = useClubAccent();
   const [step, setStep] = useState<Step>(initialMode);
   const [email, setEmail] = useState("");
@@ -42,7 +42,7 @@ export function AccountAuthForm({ initialMode = "sign-up", intro, onAuthenticate
           await onAuthenticated(await accountApi.signIn(address, password));
         } catch (err) {
           if (err instanceof ApiError && err.code === "EMAIL_NOT_CONFIRMED") {
-            await accountApi.resendCode(address).catch(() => undefined);
+            await accountApi.resendCode(address, clubSlug).catch(() => undefined);
             setStep("code");
             setInfo("Ton adresse n'est pas encore vérifiée : on vient de t'envoyer un code.");
             return;
@@ -50,12 +50,12 @@ export function AccountAuthForm({ initialMode = "sign-up", intro, onAuthenticate
           throw err;
         }
       } else if (step === "sign-up") {
-        await accountApi.signUp(address, password);
+        await accountApi.signUp(address, password, clubSlug);
         setStep("code");
       } else if (step === "code") {
         await onAuthenticated(await accountApi.verify(address, code.trim(), password));
       } else if (step === "forgot") {
-        await accountApi.passwordReset(address);
+        await accountApi.passwordReset(address, clubSlug);
         setStep("forgot-sent");
       }
     } catch (err) {
@@ -141,7 +141,7 @@ export function AccountAuthForm({ initialMode = "sign-up", intro, onAuthenticate
             variant="ghost"
             onPress={() =>
               void accountApi
-                .resendCode(email.trim())
+                .resendCode(email.trim(), clubSlug)
                 .catch(() => undefined)
                 .then(() => setInfo("Nouveau code envoyé. Pense à regarder dans les indésirables."))
             }

@@ -139,7 +139,7 @@ export function LicensedSearchCard({ clubSlug, variant = "card", autoFocus = tru
           </>
         ) : (
           <>
-            <AccountAuthForm intro={`Connecte-toi ou crée ton compte pour suivre ${step.licencie.firstName}. Parents : chacun peut avoir son propre compte.`} onAuthenticated={(dto) => link(step.licencie, dto)} />
+            <AccountAuthForm clubSlug={clubSlug} intro={`Connecte-toi ou crée ton compte pour suivre ${step.licencie.firstName}. Parents : chacun peut avoir son propre compte.`} onAuthenticated={(dto) => link(step.licencie, dto)} />
             {banner}
           </>
         )}

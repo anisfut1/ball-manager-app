@@ -18,6 +18,7 @@ export function AccountSignIn({ clubSlug }: { clubSlug: string }) {
   return (
     <Card style={styles.card}>
       <AccountAuthForm
+        clubSlug={clubSlug}
         initialMode="sign-in"
         onAuthenticated={async (dto) => {
           const result = await session.accountLogin(clubSlug, dto);
